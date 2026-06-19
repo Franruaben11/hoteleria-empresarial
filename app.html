@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataLodge · Panel de Hotel Las Acacias</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Gráficos dibujados con Canvas nativo, sin dependencias externas -->
+<style>
+  :root{
+    --ink:#11253A; --paper:#F7F5F1; --teal:#1F6F6B; --teal-deep:#163F3F;
+    --amber:#E8A33D; --coral:#E0623F; --slate:#5C6B73; --line:rgba(17,37,58,0.12);
+    --white:#ffffff; --green:#3C8F6B;
+    --font-display:"Fraunces",serif; --font-body:"Inter",sans-serif; --font-mono:"IBM Plex Mono",monospace;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; font-family:var(--font-body); color:var(--ink); background:var(--paper); -webkit-font-smoothing:antialiased;}
+  a{text-decoration:none; color:inherit;}
+  img{max-width:100%; display:block;}
+  ::selection{ background: rgba(31,111,107,0.25); }
+
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible{
+    outline:2px solid var(--teal); outline-offset:2px;
+  }
+
+  /* ---------- Layout shell ---------- */
+  .shell{ display:grid; grid-template-columns: 250px 1fr; min-height:100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar{
+    background: var(--ink); color: var(--paper);
+    padding: 26px 18px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+  }
+  .sb-logo{ display:flex; align-items:center; gap:10px; padding: 0 8px 26px; }
+  .sb-logo img{ height:30px; width:auto; filter: invert(1) brightness(1.6); }
+  .plan-badge{
+    margin: 0 8px 22px; display:flex; align-items:center; justify-content:space-between;
+    background: rgba(232,163,61,0.14); border:1px solid rgba(232,163,61,0.3);
+    border-radius: 10px; padding: 9px 12px;
+  }
+  .plan-badge span.tag{ font-family: var(--font-mono); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.05em; color: var(--amber); }
+  .plan-badge span.name{ font-size: 0.8rem; font-weight:600; }
+  .sb-nav{ display:flex; flex-direction:column; gap:3px; flex:1; }
+  .sb-nav a{
+    display:flex; align-items:center; gap:11px; padding: 11px 12px; border-radius:10px;
+    font-size:0.88rem; color: rgba(247,245,241,0.7); transition: background .15s, color .15s;
+  }
+  .sb-nav a .ico{ width:18px; text-align:center; font-size:0.95rem; }
+  .sb-nav a:hover{ background: rgba(255,255,255,0.06); color: var(--paper); }
+  .sb-nav a.active{ background: rgba(31,111,107,0.35); color: var(--paper); font-weight:600; }
+  .sb-foot{ border-top:1px solid rgba(255,255,255,0.1); padding-top:16px; margin-top:10px; }
+  .sb-user{ display:flex; align-items:center; gap:10px; padding: 0 8px; }
+  .sb-user .av{ width:34px; height:34px; border-radius:50%; background: var(--amber); color:var(--ink); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.85rem; flex-shrink:0; }
+  .sb-user .meta strong{ display:block; font-size:0.85rem; }
+  .sb-user .meta span{ font-size:0.74rem; color: rgba(247,245,241,0.55); }
+
+  /* ---------- Main ---------- */
+  .main{ padding: 30px 38px 60px; max-width: 1280px; }
+  .topbar{ display:flex; justify-content:space-between; align-items:flex-end; margin-bottom: 28px; flex-wrap:wrap; gap:14px;}
+  .topbar h1{ font-family: var(--font-display); font-weight:600; font-size:1.7rem; margin:0 0 4px; }
+  .topbar p{ margin:0; color: var(--slate); font-size:0.92rem; }
+  .topbar .right{ display:flex; gap:10px; align-items:center; }
+  .select-prop{
+    font-family: var(--font-mono); font-size:0.8rem; border:1px solid var(--line); border-radius:10px;
+    padding: 9px 12px; background: var(--white); color: var(--ink);
+  }
+  .btn{ display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:999px; font-weight:600; font-size:0.86rem; border:1px solid transparent; cursor:pointer; background:var(--ink); color:var(--paper); }
+  .btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+
+  .kpi-row{ display:grid; grid-template-columns: repeat(4,1fr); gap:16px; margin-bottom: 34px; }
+  .kpi{ background:var(--white); border:1px solid var(--line); border-radius: var(--radius); padding:18px 20px; }
+  .kpi .label{ font-family: var(--font-mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--slate); margin-bottom:10px; }
+  .kpi .value{ font-family: var(--font-display); font-size:1.7rem; font-weight:600; }
+  .kpi .delta{ font-size:0.78rem; margin-top:6px; }
+  .delta.up{ color: var(--green); } .delta.down{ color: var(--coral); }
+
+  .card{ background:var(--white); border:1px solid var(--line); border-radius: var(--radius); padding:24px; margin-bottom: 26px;}
+  .card h2{ font-family: var(--font-display); font-weight:600; font-size:1.25rem; margin:0 0 4px; }
+  .card .sub{ color:var(--slate); font-size:0.88rem; margin:0 0 20px; }
+
+  /* ---------- Price calculator ---------- */
+  .calc-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:30px; }
+  .field{ margin-bottom:16px; }
+  .field label{ display:block; font-size:0.8rem; font-weight:600; margin-bottom:6px; }
+  .field .hint{ font-size:0.72rem; color:var(--slate); margin-top:4px; }
+  .field input[type=number], .field select{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px; font-family:var(--font-body); font-size:0.9rem; background:var(--paper);
+  }
+  .field-row{ display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  .chip-group{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chip{ position:relative; }
+  .chip input{ position:absolute; opacity:0; }
+  .chip label{
+    display:flex; align-items:center; gap:6px; font-size:0.78rem; padding:7px 12px; border-radius:999px;
+    border:1px solid var(--line); background:var(--paper); cursor:pointer; user-select:none; margin:0; font-weight:500;
+  }
+  .chip input:checked + label{ background: rgba(31,111,107,0.12); border-color: var(--teal); color: var(--teal-deep); font-weight:600; }
+
+  .price-output{
+    background: var(--ink); color: var(--paper); border-radius:18px; padding:26px; height: 100%;
+    display:flex; flex-direction:column;
+  }
+  .price-output .tag{ font-family: var(--font-mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color: var(--amber); margin-bottom:10px;}
+  .price-output .big{ font-family: var(--font-display); font-size:2.6rem; font-weight:700; line-height:1; }
+  .price-output .big small{ font-size:1rem; font-weight:400; color: rgba(247,245,241,0.6); }
+  .price-output .range{ font-size:0.82rem; color: rgba(247,245,241,0.65); margin-top:6px; margin-bottom: 20px;}
+  .breakdown{ display:flex; flex-direction:column; gap:9px; font-size:0.82rem; flex:1; }
+  .breakdown .row{ display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.1); }
+  .breakdown .row span:last-child{ font-family: var(--font-mono); }
+  .breakdown .row.total{ border-bottom:none; padding-top:12px; font-weight:700; font-size:0.95rem; }
+  .price-output .recalc-note{ font-size:0.72rem; color: rgba(247,245,241,0.5); margin-top:14px; }
+
+  /* ---------- Reviews ---------- */
+  .reviews-summary{ display:grid; grid-template-columns: 280px 1fr; gap: 28px; margin-bottom:26px; align-items:center;}
+  .score-block{ text-align:center; }
+  .score-block .num{ font-family: var(--font-display); font-size:3.2rem; font-weight:700; line-height:1;}
+  .stars{ color: var(--amber); font-size:1.1rem; letter-spacing:2px; margin: 8px 0 4px;}
+  .score-block .count{ font-size:0.8rem; color:var(--slate); }
+  .bar-dist{ display:flex; flex-direction:column; gap:7px; }
+  .bar-dist .r{ display:grid; grid-template-columns: 50px 1fr 36px; align-items:center; gap:10px; font-size:0.78rem; }
+  .bar-dist .track{ height:8px; background:var(--line); border-radius:999px; overflow:hidden;}
+  .bar-dist .fill{ height:100%; background: var(--amber); border-radius:999px; }
+
+  .charts-row{ display:grid; grid-template-columns: 1fr 1fr; gap:20px; margin-bottom: 26px; }
+  .chart-box{ background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:20px; }
+  .chart-box h3{ font-size:0.92rem; margin:0 0 14px; font-weight:600; }
+  .chart-box canvas{ max-height:220px; }
+
+  .review-list{ display:flex; flex-direction:column; gap:14px; }
+  .review{ border:1px solid var(--line); border-radius:12px; padding:16px 18px; }
+  .review.neg{ border-left: 3px solid var(--coral); }
+  .review.pos{ border-left: 3px solid var(--green); }
+  .review .head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; flex-wrap:wrap; gap:6px;}
+  .review .name{ font-weight:600; font-size:0.88rem; }
+  .review .date{ font-size:0.74rem; color:var(--slate); font-family:var(--font-mono); }
+  .review .stars{ font-size:0.85rem; margin:0 0 6px; }
+  .review p{ margin:0; font-size:0.85rem; color: #2a3b4d; line-height:1.55; }
+  .review .topic{ display:inline-block; margin-top:8px; font-family:var(--font-mono); font-size:0.66rem; text-transform:uppercase; letter-spacing:0.04em; background: rgba(17,37,58,0.06); padding:3px 8px; border-radius:6px; color:var(--slate); }
+
+  .show-more{ text-align:center; margin-top:16px; }
+
+  /* ---------- Recommendations ---------- */
+  .reco-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:16px; }
+  .reco-card.strength{ background: rgba(60,143,107,0.06); }
+  .reco-card.strength .src{ color: var(--green); }
+  .reco-card .count-badge{ display:inline-flex; align-items:center; gap:5px; font-family: var(--font-mono); font-size:0.7rem; padding:3px 9px; border-radius:999px; margin-left:8px; }
+  .reco-card.weakness .count-badge{ background: rgba(224,98,63,0.14); color: var(--coral); }
+  .reco-card.strength .count-badge{ background: rgba(60,143,107,0.14); color: var(--green); }
+
+  /* ---------- Clima y eventos ---------- */
+  .weather-row{ display:flex; gap:10px; overflow-x:auto; padding-bottom:6px; }
+  .day-card{ flex: 0 0 92px; text-align:center; border:1px solid var(--line); border-radius:12px; padding:14px 8px; background: var(--paper); }
+  .day-card .d{ font-family: var(--font-mono); font-size:0.7rem; color:var(--slate); text-transform:uppercase; margin-bottom:6px;}
+  .day-card .ic{ font-size:1.6rem; margin-bottom:6px; }
+  .day-card .temp{ font-size:0.86rem; font-weight:700; }
+  .day-card .temp small{ font-weight:400; color:var(--slate); }
+  .day-card .cond{ font-size:0.68rem; color:var(--slate); margin-top:3px; }
+
+  .events-list{ display:flex; flex-direction:column; gap:10px; }
+  .event-row{ display:flex; align-items:center; gap:14px; border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .event-row .ed{ font-family: var(--font-mono); font-size:0.78rem; background: rgba(31,111,107,0.1); color:var(--teal-deep); border-radius:8px; padding:6px 10px; text-align:center; min-width:54px; }
+  .event-row .et{ flex:1; }
+  .event-row .et strong{ display:block; font-size:0.88rem; }
+  .event-row .et span{ font-size:0.76rem; color:var(--slate); }
+  .event-row .cat{ font-family: var(--font-mono); font-size:0.66rem; text-transform:uppercase; color:var(--slate); background: var(--paper); padding:3px 8px; border-radius:6px; }
+  .reco-card{ border:1px solid var(--line); border-radius:12px; padding:18px; background: rgba(31,111,107,0.04); }
+  .reco-card .src{ font-family: var(--font-mono); font-size:0.68rem; color:var(--coral); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;}
+  .reco-card h4{ margin:0 0 8px; font-size:0.96rem; font-family: var(--font-display); font-weight:600; }
+  .reco-card p{ margin:0; font-size:0.84rem; color: var(--slate); line-height:1.5; }
+  .reco-card .quote{ font-size: 0.8rem; font-style: italic; color:#2a3b4d; border-left:2px solid var(--line); padding-left:10px; margin: 8px 0; }
+  .reco-card .impact{ display:inline-block; margin-top:10px; font-size:0.7rem; font-weight:600; color: var(--teal-deep); background: rgba(31,111,107,0.12); padding:3px 9px; border-radius:999px; }
+
+  @media (max-width: 980px){
+    .shell{ grid-template-columns: 1fr; }
+    .sidebar{ position:relative; height:auto; flex-direction:row; align-items:center; overflow-x:auto; }
+    .sb-nav{ flex-direction:row; }
+    .sb-foot, .plan-badge{ display:none; }
+    .kpi-row{ grid-template-columns: 1fr 1fr; }
+    .calc-grid, .charts-row, .reviews-summary, .reco-grid{ grid-template-columns: 1fr; }
+    .main{ padding: 24px 18px 50px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="sb-logo"><img src="logo.png" alt="DataLodge"></div>
+    <div class="plan-badge"><span class="tag">Plan</span><span class="name">Premium ✓</span></div>
+    <nav class="sb-nav">
+      <a href="#resumen" class="active"><span class="ico">▦</span> Resumen</a>
+      <a href="#precio"><span class="ico">$</span> Precio recomendado</a>
+      <a href="#alojamiento"><span class="ico">⌂</span> Mi alojamiento</a>
+      <a href="#resenas"><span class="ico">★</span> Reseñas y opiniones</a>
+      <a href="#mejoras"><span class="ico">✦</span> Recomendaciones</a>
+      <a href="#cursos"><span class="ico">▢</span> Cursos</a>
+      <a href="#clima"><span class="ico">☀</span> Clima y eventos</a>
+      <a href="#alertas"><span class="ico">!</span> Alertas</a>
+    </nav>
+    <div class="sb-foot">
+      <div class="sb-user">
+        <div class="av">LA</div>
+        <div class="meta"><strong>Hotel Las Acacias</strong><span>Mar del Plata, AR</span></div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar" id="resumen">
+      <div>
+        <h1>Hola, Hotel Las Acacias 👋</h1>
+        <p>Este es el estado de tu alojamiento hoy, 19 de junio de 2026.</p>
+      </div>
+      <div class="right">
+        <select class="select-prop"><option>Hotel Las Acacias — sede principal</option></select>
+        <a href="#" class="btn btn-ghost">Exportar informe</a>
+        <a href="#" class="btn">Actualizar datos</a>
+      </div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">Reputación promedio</div>
+        <div class="value">4.3<small style="font-size:1rem; color:var(--slate);">/5</small></div>
+        <div class="delta up">▲ +0.2 vs. mes anterior</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Ocupación actual</div>
+        <div class="value">82%</div>
+        <div class="delta up">▲ +9 pts vs. semana pasada</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Precio sugerido / noche</div>
+        <div class="value">$84.500</div>
+        <div class="delta up">▲ +12% por demanda alta</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Reseñas este mes</div>
+        <div class="value">37</div>
+        <div class="delta down">▼ 4 negativas a resolver</div>
+      </div>
+    </div>
+
+    <!-- ============ MI ALOJAMIENTO ============ -->
+    <div class="card" id="alojamiento">
+      <h2>Mi alojamiento</h2>
+      <p class="sub">Configurá una sola vez las características propias de tu alojamiento. DataLodge las va a usar como base para calcular el precio recomendado cada vez que elijas una fecha de estadía.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="tipo">Tipo de alojamiento</label>
+          <select id="tipo">
+            <option value="hostel">Hostel</option>
+            <option value="cabana">Cabaña</option>
+            <option value="hotel" selected>Hotel</option>
+            <option value="apart">Apart / Departamento</option>
+            <option value="hotel-boutique">Hotel boutique</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ubicacion">Ubicación</label>
+          <select id="ubicacion">
+            <option value="centro" selected>Zona céntrica</option>
+            <option value="afueras">Afueras de la ciudad</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="m2cub">m² cubiertos</label>
+          <input type="number" id="m2cub" value="32" min="8">
+        </div>
+        <div class="field">
+          <label for="m2tot">m² totales (con exterior)</label>
+          <input type="number" id="m2tot" value="48" min="8">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="capacidad">Capacidad máxima (huéspedes)</label>
+          <input type="number" id="capacidad" value="4" min="1">
+        </div>
+        <div class="field">
+          <label for="habitaciones">Habitaciones</label>
+          <input type="number" id="habitaciones" value="2" min="1">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="camas">Camas</label>
+          <input type="number" id="camas" value="3" min="1">
+        </div>
+        <div class="field">
+          <label for="banos">Baños</label>
+          <input type="number" id="banos" value="1" min="1">
+        </div>
+      </div>
+
+      <div class="field">
+        <label><input type="checkbox" id="cocina" checked> Tiene cocina equipada</label>
+      </div>
+
+      <div class="field">
+        <label>Servicios incluidos</label>
+        <div class="chip-group">
+          <div class="chip"><input type="checkbox" id="s-wifi" checked><label for="s-wifi">Wifi</label></div>
+          <div class="chip"><input type="checkbox" id="s-ac" checked><label for="s-ac">Aire acondicionado</label></div>
+          <div class="chip"><input type="checkbox" id="s-desayuno" checked><label for="s-desayuno">Desayuno</label></div>
+          <div class="chip"><input type="checkbox" id="s-parrilla"><label for="s-parrilla">Parrilla</label></div>
+          <div class="chip"><input type="checkbox" id="s-pileta"><label for="s-pileta">Pileta</label></div>
+          <div class="chip"><input type="checkbox" id="s-estacionamiento" checked><label for="s-estacionamiento">Estacionamiento</label></div>
+          <div class="chip"><input type="checkbox" id="s-limpieza" checked><label for="s-limpieza">Limpieza diaria</label></div>
+          <div class="chip"><input type="checkbox" id="s-spa"><label for="s-spa">Spa</label></div>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px; margin-top:18px;">
+        <button type="button" class="btn" id="btn-guardar-aloj">Guardar características</button>
+        <span id="guardado-msg" style="font-size:0.82rem; color:var(--green); opacity:0; transition:opacity .3s;">✓ Características guardadas</span>
+      </div>
+    </div>
+
+    <!-- ============ PRECIO RECOMENDADO ============ -->
+    <div class="card" id="precio">
+      <h2>Precio recomendado</h2>
+      <p class="sub">Calculado a partir de las características guardadas en "Mi alojamiento", la fecha de estadía y la demanda estacional.</p>
+
+      <div class="calc-grid">
+        <div>
+          <div class="field-row">
+            <div class="field">
+              <label for="checkin">Fecha de check-in</label>
+              <input type="date" id="checkin" value="2026-07-18">
+            </div>
+            <div class="field">
+              <label for="noches">Noches de estadía</label>
+              <input type="number" id="noches" value="2" min="1">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Temporada (detectada automáticamente)</label>
+            <div id="out-temporada" style="font-size:0.85rem; padding:10px 12px; border:1px solid var(--line); border-radius:9px; background:var(--paper);">—</div>
+            <div class="hint">Se calcula a partir de la fecha de check-in: fines de semana largo, vacaciones de verano e invierno, Semana Santa, Navidad y Año Nuevo se consideran temporada alta. El resto, temporada baja.</div>
+          </div>
+
+          <div class="hint" style="margin-top:18px; padding:12px 14px; background: rgba(31,111,107,0.06); border-radius:10px;">
+            Estas son las características actuales de tu alojamiento. Para modificarlas, ir a la solapa <a href="#alojamiento" style="text-decoration:underline; color:var(--teal-deep);">Mi alojamiento</a>.
+          </div>
+        </div>
+
+        <div class="price-output">
+          <span class="tag">Precio sugerido / noche</span>
+          <div class="big" id="out-price">$0</div>
+          <div class="range" id="out-range">Rango competitivo: $0 – $0</div>
+          <div class="breakdown" id="out-breakdown"></div>
+          <div class="recalc-note">El cálculo se actualiza al instante con cada cambio. Esta versión usa una fórmula estática a modo de demostración; la versión final de DataLodge incorporará datos externos de mercado en tiempo real.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ RESEÑAS ============ -->
+    <div class="card" id="resenas">
+      <h2>Reseñas y opiniones</h2>
+      <p class="sub">Extraídas de reseñas publicadas por huéspedes en distintas plataformas.</p>
+
+      <div class="reviews-summary">
+        <div class="score-block">
+          <div class="num">4.3</div>
+          <div class="stars">★★★★☆</div>
+          <div class="count">Basado en 142 reseñas</div>
+        </div>
+        <div class="bar-dist" id="bar-dist"></div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-box">
+          <h3>Distribución de puntuaciones</h3>
+          <canvas id="chartStars"></canvas>
+        </div>
+        <div class="chart-box">
+          <h3>Evolución de reputación (según reseñas)</h3>
+          <canvas id="chartTrend"></canvas>
+        </div>
+      </div>
+
+      <div class="review-list" id="review-list"></div>
+      <div class="show-more"><a href="#" class="btn btn-ghost">Ver las 142 reseñas</a></div>
+    </div>
+
+    <!-- ============ RECOMENDACIONES ============ -->
+    <div class="card" id="mejoras">
+      <h2>Recomendaciones automáticas</h2>
+      <p class="sub">DataLodge agrupa las reseñas por tema y detecta cuándo un mismo problema se repite en varias opiniones con puntuación baja, o cuándo un mismo punto fuerte aparece en varias opiniones con puntuación alta.</p>
+      <h3 style="font-size:0.95rem; margin:0 0 12px; color:var(--coral);">Puntos a mejorar</h3>
+      <div class="reco-grid" id="reco-grid-weak"></div>
+      <h3 style="font-size:0.95rem; margin:26px 0 12px; color:var(--green);">Fortalezas del alojamiento</h3>
+      <div class="reco-grid" id="reco-grid-strong"></div>
+    </div>
+
+    <!-- ============ CLIMA Y EVENTOS ============ -->
+    <div class="card" id="clima">
+      <h2>Clima y eventos cercanos</h2>
+      <p class="sub">Pronóstico para los próximos 10 días en la ubicación del alojamiento y eventos previstos en la zona durante el próximo mes. Datos simulados a modo de demostración.</p>
+      <div class="weather-row" id="weather-row"></div>
+      <h3 style="font-size:0.92rem; margin:26px 0 12px;">Eventos en los próximos 30 días</h3>
+      <div class="events-list" id="events-list"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   1) CALCULADORA DE PRECIO — fórmula estática, solo con datos
+      que el usuario publica (sin fuentes externas).
+   ============================================================ */
+function calcularPrecio(){
+  const tipo = document.getElementById('tipo').value;
+  const ubicacion = document.getElementById('ubicacion').value;
+  const m2cub = parseFloat(document.getElementById('m2cub').value) || 0;
+  const m2tot = parseFloat(document.getElementById('m2tot').value) || 0;
+  const capacidad = parseFloat(document.getElementById('capacidad').value) || 1;
+  const habitaciones = parseFloat(document.getElementById('habitaciones').value) || 1;
+  const camas = parseFloat(document.getElementById('camas').value) || 1;
+  const banos = parseFloat(document.getElementById('banos').value) || 1;
+  const cocina = document.getElementById('cocina').checked;
+  const checkin = new Date(document.getElementById('checkin').value + 'T00:00:00');
+  const noches = parseFloat(document.getElementById('noches').value) || 1;
+
+  const servicios = {
+    wifi: document.getElementById('s-wifi').checked,
+    ac: document.getElementById('s-ac').checked,
+    desayuno: document.getElementById('s-desayuno').checked,
+    parrilla: document.getElementById('s-parrilla').checked,
+    pileta: document.getElementById('s-pileta').checked,
+    estacionamiento: document.getElementById('s-estacionamiento').checked,
+    limpieza: document.getElementById('s-limpieza').checked,
+    spa: document.getElementById('s-spa').checked,
+  };
+
+  // --- Base según tipo de alojamiento (ARS, valor de referencia) ---
+  const baseTipo = { hostel: 18000, cabana: 32000, apart: 28000, hotel: 30000, 'hotel-boutique': 42000 };
+  let base = baseTipo[tipo] ?? 28000;
+
+  // --- Ajuste por superficie ---
+  base += m2cub * 350;
+  base += Math.max(0, m2tot - m2cub) * 120; // exterior pondera menos que cubierto
+
+  // --- Ajuste por capacidad/estructura ---
+  base += (capacidad - 1) * 4200;
+  base += (habitaciones - 1) * 3800;
+  base += (camas - capacidad) > 0 ? (camas - capacidad) * 1200 : 0; // camas extra
+  base += (banos - 1) * 2600;
+  if (cocina) base += 3500;
+
+  // --- Ajuste por servicios ---
+  const valorServicio = { wifi: 1200, ac: 2800, desayuno: 4500, parrilla: 1800, pileta: 6500, estacionamiento: 2200, limpieza: 3200, spa: 7800 };
+  let serviciosTotal = 0;
+  Object.keys(servicios).forEach(k => { if (servicios[k]) serviciosTotal += valorServicio[k]; });
+  base += serviciosTotal;
+
+  // --- Ajuste por ubicación (solo dos zonas) ---
+  const multUbicacion = { centro: 1.15, afueras: 0.9 };
+  let conUbicacion = base * (multUbicacion[ubicacion] ?? 1);
+
+  // --- Ajuste por fin de semana (cualquier check-in viernes/sábado) ---
+  let multFinde = 1;
+  let etiquetaFinde = 'Día de semana';
+  if (!isNaN(checkin.getTime())){
+    const dia = checkin.getDay(); // 0 domingo ... 6 sábado
+    if (dia === 5 || dia === 6) { multFinde = 1.12; etiquetaFinde = 'Fin de semana'; }
+  }
+
+  // --- Temporada: calculada automáticamente según calendario, no se pregunta al usuario ---
+  const { esAlta, motivo } = esTemporadaAlta(checkin);
+  const multTemporada = esAlta ? 1.32 : 0.9;
+  document.getElementById('out-temporada').textContent = esAlta
+    ? `Temporada alta — ${motivo}`
+    : `Temporada baja — ${motivo}`;
+
+  let precioFinal = conUbicacion * multFinde * multTemporada;
+  precioFinal = Math.round(precioFinal / 100) * 100; // redondeo a centena
+
+  // Salida
+  document.getElementById('out-price').innerHTML = `$${precioFinal.toLocaleString('es-AR')}<small> / noche</small>`;
+  const min = Math.round(precioFinal*0.9/100)*100, max = Math.round(precioFinal*1.1/100)*100;
+  document.getElementById('out-range').textContent = `Rango competitivo sugerido: $${min.toLocaleString('es-AR')} – $${max.toLocaleString('es-AR')}`;
+
+  document.getElementById('out-breakdown').innerHTML = `
+    <div class="row"><span>Base por tipo y tamaño</span><span>$${Math.round(base - serviciosTotal).toLocaleString('es-AR')}</span></div>
+    <div class="row"><span>Servicios incluidos (+${Object.values(servicios).filter(Boolean).length})</span><span>+$${serviciosTotal.toLocaleString('es-AR')}</span></div>
+    <div class="row"><span>Ubicación: ${ubicacion === 'centro' ? 'zona céntrica' : 'afueras de la ciudad'}</span><span>×${(multUbicacion[ubicacion] ?? 1).toFixed(2)}</span></div>
+    <div class="row"><span>${etiquetaFinde}</span><span>×${multFinde.toFixed(2)}</span></div>
+    <div class="row"><span>${esAlta ? 'Temporada alta' : 'Temporada baja'}</span><span>×${multTemporada.toFixed(2)}</span></div>
+    <div class="row total"><span>Precio sugerido</span><span>$${precioFinal.toLocaleString('es-AR')}</span></div>
+  `;
+}
+
+/* ---- Detección de temporada alta a partir de un calendario fijo ----
+   Temporada alta: vacaciones de verano e invierno, Semana Santa,
+   Navidad/Año Nuevo y fines de semana largo. Todo lo demás, temporada baja. */
+function esTemporadaAlta(fecha){
+  if (isNaN(fecha.getTime())) return { esAlta:false, motivo:'fecha no definida' };
+  const y = fecha.getFullYear();
+  const inRange = (ini, fin) => fecha >= ini && fecha <= fin;
+
+  // Vacaciones de verano (dic-feb)
+  if (inRange(new Date(y,11,15), new Date(y,11,31)) || inRange(new Date(y,0,1), new Date(y,1,28))) {
+    return { esAlta:true, motivo:'vacaciones de verano' };
+  }
+  // Vacaciones de invierno (julio)
+  if (inRange(new Date(y,6,1), new Date(y,6,31))) {
+    return { esAlta:true, motivo:'vacaciones de invierno' };
+  }
+  // Semana Santa 2026: 2 al 5 de abril
+  if (inRange(new Date(2026,2,30), new Date(2026,3,5))) {
+    return { esAlta:true, motivo:'Semana Santa' };
+  }
+  // Navidad y Año Nuevo
+  if (inRange(new Date(y,11,23), new Date(y,11,31)) || inRange(new Date(y,0,1), new Date(y,0,2))) {
+    return { esAlta:true, motivo:'Navidad / Año Nuevo' };
+  }
+  // Fines de semana largo 2026 (Argentina, feriados turísticos trasladables)
+  const findesLargos2026 = [
+    ['2026-02-14','2026-02-17','Carnaval'],
+    ['2026-03-21','2026-03-23','Día Nacional de la Memoria'],
+    ['2026-05-01','2026-05-03','Día del Trabajador'],
+    ['2026-06-19','2026-06-21','Paso a la Inmortalidad del Gral. Güemes'],
+    ['2026-08-15','2026-08-17','Paso a la Inmortalidad del Gral. San Martín'],
+    ['2026-10-10','2026-10-12','Día del Respeto a la Diversidad Cultural'],
+    ['2026-11-20','2026-11-22','Día de la Soberanía Nacional'],
+  ];
+  for (const [ini, fin, nombre] of findesLargos2026){
+    if (inRange(new Date(ini+'T00:00:00'), new Date(fin+'T23:59:59'))) {
+      return { esAlta:true, motivo:`fin de semana largo — ${nombre}` };
+    }
+  }
+  return { esAlta:false, motivo:'sin eventos de temporada alta en esta fecha' };
+}
+
+['tipo','ubicacion','m2cub','m2tot','capacidad','habitaciones','camas','banos','cocina','checkin','noches',
+ 's-wifi','s-ac','s-desayuno','s-parrilla','s-pileta','s-estacionamiento','s-limpieza','s-spa'
+].forEach(id => document.getElementById(id).addEventListener('input', calcularPrecio));
+calcularPrecio();
+
+document.getElementById('btn-guardar-aloj').addEventListener('click', () => {
+  const msg = document.getElementById('guardado-msg');
+  msg.style.opacity = '1';
+  setTimeout(() => { msg.style.opacity = '0'; }, 2200);
+});
+
+/* ============================================================
+   2) RESEÑAS GENERADAS (mock) + render
+   ============================================================ */
+const reviews = [
+  {name:'Marina G.', rating:5, date:'12 jun 2026', iso:'2026-06-12', topic:'Limpieza', text:'Impecable de principio a fin. La habitación estaba perfectamente limpia y el personal fue muy atento durante toda la estadía.'},
+  {name:'Diego R.', rating:2, date:'08 jun 2026', iso:'2026-06-08', topic:'Desayuno', text:'El desayuno tiene muy poca variedad para quienes comemos sin TACC. Solo había una opción y se terminaba temprano.'},
+  {name:'Florencia P.', rating:5, date:'05 jun 2026', iso:'2026-06-05', topic:'Pileta', text:'La pileta climatizada fue el punto más alto. Pasamos horas ahí con los chicos y siempre estaba en buen estado.'},
+  {name:'Tomás L.', rating:1, date:'02 jun 2026', iso:'2026-06-02', topic:'Wifi', text:'El wifi prácticamente no llegaba a la habitación. Tuve que trabajar desde el lobby todo el fin de semana.'},
+  {name:'Carla M.', rating:4, date:'29 may 2026', iso:'2026-05-29', topic:'Ubicación', text:'Muy bien ubicado, a pocas cuadras de todo. Solo restaría un poco más de señalización para llegar caminando.'},
+  {name:'Joaquín F.', rating:5, date:'24 may 2026', iso:'2026-05-24', topic:'Atención', text:'El personal de recepción nos ayudó a reorganizar toda la estadía cuando se complicó el clima. Atención excelente.'},
+  {name:'Valentina S.', rating:2, date:'19 may 2026', iso:'2026-05-19', topic:'Ruido', text:'Se escuchaba muchísimo la calle desde la habitación. No pudimos descansar bien ninguna de las dos noches.'},
+  {name:'Nicolás B.', rating:3, date:'15 may 2026', iso:'2026-05-15', topic:'Estacionamiento', text:'El estacionamiento es muy chico para la cantidad de autos. Tuvimos que dejar el auto a dos cuadras la primera noche.'},
+  {name:'Lucía A.', rating:5, date:'11 may 2026', iso:'2026-05-11', topic:'Habitación', text:'La habitación superó lo que esperábamos por el precio. Muy cómoda, con buena vista y todo nuevo.'},
+  {name:'Martín D.', rating:1, date:'07 may 2026', iso:'2026-05-07', topic:'Aire acondicionado', text:'El aire acondicionado no funcionaba y avisamos dos veces en recepción sin solución durante toda la estadía.'},
+  {name:'Sofía N.', rating:4, date:'02 may 2026', iso:'2026-05-02', topic:'Spa', text:'El spa estuvo muy bueno, aunque convendría tener más turnos disponibles porque se llena rápido los fines de semana.'},
+  {name:'Pablo E.', rating:5, date:'27 abr 2026', iso:'2026-04-27', topic:'Parrilla', text:'La parrilla fue ideal para juntarnos en familia. Estaba en buen estado y con todo lo necesario a mano.'},
+  {name:'Romina V.', rating:4, date:'20 abr 2026', iso:'2026-04-20', topic:'Habitación', text:'Muy buena relación precio-calidad. La cama era cómoda y la habitación tenía buena luz natural.'},
+  {name:'Federico C.', rating:2, date:'14 abr 2026', iso:'2026-04-14', topic:'Limpieza', text:'Encontramos la habitación con la limpieza a medio hacer al llegar. Tuvimos que esperar casi una hora.'},
+  {name:'Agustina T.', rating:5, date:'30 mar 2026', iso:'2026-03-30', topic:'Atención', text:'Nos recibieron de noche y aun así el personal fue súper amable y nos explicó todo con calma.'},
+  {name:'Ezequiel O.', rating:3, date:'18 mar 2026', iso:'2026-03-18', topic:'Wifi', text:'El wifi funciona bien en las áreas comunes pero en la habitación se corta seguido.'},
+  {name:'Camila H.', rating:4, date:'05 mar 2026', iso:'2026-03-05', topic:'Pileta', text:'La pileta es chica para la cantidad de huéspedes en temporada, pero está siempre limpia.'},
+  {name:'Gonzalo I.', rating:1, date:'21 feb 2026', iso:'2026-02-21', topic:'Estacionamiento', text:'Pagamos por estacionamiento y al llegar no había lugar disponible. Mala comunicación de parte del hotel.'},
+  {name:'Brenda K.', rating:1, date:'15 feb 2026', iso:'2026-02-15', topic:'Limpieza', text:'Llegamos y la habitación tenía pelos en la cama y el baño sin limpiar. Tuvimos que reclamar para que la arreglaran.'},
+  {name:'Ramiro Q.', rating:2, date:'09 feb 2026', iso:'2026-02-09', topic:'Limpieza', text:'La habitación olía a humedad y se notaba que no habían pasado bien el trapo en el piso del baño.'},
+  {name:'Yamila W.', rating:1, date:'30 ene 2026', iso:'2026-01-30', topic:'Limpieza', text:'Encontramos manchas en las sábanas. Por suerte el personal las cambió rápido cuando avisamos, pero no debería pasar.'},
+  {name:'Hernán J.', rating:5, date:'24 ene 2026', iso:'2026-01-24', topic:'Pileta', text:'La pileta es enorme y está siempre impecable. Fue lo mejor de la estadía para toda la familia.'},
+  {name:'Daniela X.', rating:4, date:'18 ene 2026', iso:'2026-01-18', topic:'Pileta', text:'Muy buena pileta, con reposeras suficientes incluso en un fin de semana lleno.'},
+  {name:'Iván Z.', rating:5, date:'12 ene 2026', iso:'2026-01-12', topic:'Atención', text:'Desde que llegamos hasta que nos fuimos, el personal estuvo siempre disponible y de buen humor. Se nota que les gusta lo que hacen.'},
+  {name:'Paula Y.', rating:5, date:'05 ene 2026', iso:'2026-01-05', topic:'Atención', text:'Nos ayudaron a último momento a cambiar la fecha de salida sin ningún problema. Atención de primera.'},
+];
+
+function starString(n){ return '★★★★★'.slice(0,n) + '☆☆☆☆☆'.slice(0, 5-n); }
+
+const reviewListEl = document.getElementById('review-list');
+reviews.forEach(r => {
+  const div = document.createElement('div');
+  div.className = 'review ' + (r.rating >= 4 ? 'pos' : 'neg');
+  div.innerHTML = `
+    <div class="head"><span class="name">${r.name}</span><span class="date">${r.date}</span></div>
+    <div class="stars" style="color: var(--amber);">${starString(r.rating)}</div>
+    <p>${r.text}</p>
+    <span class="topic">${r.topic}</span>
+  `;
+  reviewListEl.appendChild(div);
+});
+
+// Distribución de estrellas (incluye reseñas no listadas, total 142)
+const dist = {5: 71, 4: 38, 3: 16, 2: 11, 1: 6};
+const totalRev = Object.values(dist).reduce((a,b)=>a+b,0);
+const barDistEl = document.getElementById('bar-dist');
+[5,4,3,2,1].forEach(star => {
+  const pct = Math.round(dist[star]/totalRev*100);
+  const row = document.createElement('div');
+  row.className = 'r';
+  row.innerHTML = `<span>${star} ★</span><div class="track"><div class="fill" style="width:${pct}%"></div></div><span>${pct}%</span>`;
+  barDistEl.appendChild(row);
+});
+
+/* ============================================================
+   3) GRÁFICOS
+   ============================================================ */
+drawBarChart('chartStars', ['1★','2★','3★','4★','5★'], [dist[1],dist[2],dist[3],dist[4],dist[5]],
+  ['#E0623F','#E0623F','#E8A33D','#1F6F6B','#1F6F6B']);
+
+// Evolución de reputación calculada a partir de las reseñas (promedio mensual)
+const nombreMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const porMes = {};
+reviews.forEach(r => {
+  const d = new Date(r.iso + 'T00:00:00');
+  const key = `${d.getFullYear()}-${d.getMonth()}`;
+  if (!porMes[key]) porMes[key] = { suma:0, n:0, mes:d.getMonth(), anio:d.getFullYear() };
+  porMes[key].suma += r.rating;
+  porMes[key].n += 1;
+});
+const mesesOrdenados = Object.values(porMes).sort((a,b) => (a.anio - b.anio) || (a.mes - b.mes));
+const labelsTrend = mesesOrdenados.map(m => `${nombreMes[m.mes]} ${m.anio}`);
+const dataTrend = mesesOrdenados.map(m => Math.round((m.suma / m.n) * 10) / 10);
+
+drawLineChart('chartTrend', labelsTrend, dataTrend, '#1F6F6B', 1, 5);
+
+/* ============================================================
+   4) RECOMENDACIONES AUTOMÁTICAS
+      Se agrupan las reseñas por tema. Si un mismo tema se repite
+      en varias reseñas de puntuación baja (1-2★), se genera una
+      alerta de mejora. Si se repite en reseñas de puntuación alta
+      (4-5★), se muestra como fortaleza del alojamiento.
+   ============================================================ */
+const sugerenciaMejora = {
+  'Desayuno': 'Sumar al menos una opción sin TACC y una opción vegana fija en el buffet reduciría este tipo de quejas.',
+  'Wifi': 'Instalar un repetidor de señal por piso suele resolver la cobertura despareja en las habitaciones.',
+  'Ruido': 'Vidrios DVH o cortinas con refuerzo acústico en las habitaciones que dan a la calle mejorarían el descanso.',
+  'Estacionamiento': 'Conviene reorganizar el espacio disponible o convenir con un estacionamiento cercano para los picos de ocupación.',
+  'Aire acondicionado': 'Un mantenimiento preventivo de los equipos antes de cada temporada alta evitaría este tipo de reclamos.',
+  'Limpieza': 'Reforzar el equipo de limpieza en los horarios de mayor rotación de huéspedes evitaría demoras al check-in.',
+  'Spa': 'Ampliar los turnos disponibles, sobre todo los fines de semana, evitaría la saturación del servicio.',
+};
+const descripcionFortaleza = {
+  'Pileta': 'Es uno de los espacios más mencionados de forma positiva por los huéspedes.',
+  'Atención': 'El personal recibe elogios constantes por su trato y disposición.',
+  'Habitación': 'La relación entre comodidad y precio de las habitaciones es muy bien valorada.',
+  'Parrilla': 'El espacio de parrilla es destacado especialmente por huéspedes que viajan en grupo o en familia.',
+  'Ubicación': 'La cercanía a los puntos de interés es un diferencial frente a otros alojamientos de la zona.',
+  'Limpieza': 'La limpieza general del alojamiento recibe valoraciones consistentemente altas.',
+  'Spa': 'El servicio de spa es uno de los más elogiados entre los servicios pagos.',
+};
+
+// Agrupar reseñas por tema
+const porTema = {};
+reviews.forEach(r => {
+  if (!porTema[r.topic]) porTema[r.topic] = { bajas: [], altas: [] };
+  if (r.rating <= 2) porTema[r.topic].bajas.push(r);
+  if (r.rating >= 4) porTema[r.topic].altas.push(r);
+});
+
+const gridWeak = document.getElementById('reco-grid-weak');
+const gridStrong = document.getElementById('reco-grid-strong');
+const UMBRAL = 2; // mínimo de reseñas repetidas para generar la recomendación
+
+let huboDebilidad = false;
+Object.entries(porTema).forEach(([tema, grupo]) => {
+  if (grupo.bajas.length >= UMBRAL){
+    huboDebilidad = true;
+    const ejemplo = grupo.bajas[0];
+    const card = document.createElement('div');
+    card.className = 'reco-card weakness';
+    card.innerHTML = `
+      <div class="src">Tema repetido en reseñas negativas <span class="count-badge">${grupo.bajas.length} reseñas · 1-2★</span></div>
+      <h4>Mejorar: ${tema.toLowerCase()}</h4>
+      <div class="quote">"${ejemplo.text}" — ${ejemplo.name}</div>
+      <p>${sugerenciaMejora[tema] || 'Revisar este punto con el equipo operativo, ya que se repite en varias reseñas con puntuación baja.'}</p>
+    `;
+    gridWeak.appendChild(card);
+  }
+});
+if (!huboDebilidad){
+  gridWeak.innerHTML = '<p style="color:var(--slate); font-size:0.88rem;">No se detectaron temas repetidos con puntuación baja en este período.</p>';
+}
+
+let huboFortaleza = false;
+Object.entries(porTema).forEach(([tema, grupo]) => {
+  if (grupo.altas.length >= UMBRAL){
+    huboFortaleza = true;
+    const ejemplo = grupo.altas[0];
+    const card = document.createElement('div');
+    card.className = 'reco-card strength';
+    card.innerHTML = `
+      <div class="src">Tema repetido en reseñas positivas <span class="count-badge">${grupo.altas.length} reseñas · 4-5★</span></div>
+      <h4>Fortaleza: ${tema.toLowerCase()}</h4>
+      <div class="quote">"${ejemplo.text}" — ${ejemplo.name}</div>
+      <p>${descripcionFortaleza[tema] || 'Este punto se repite en varias reseñas con puntuación alta: conviene destacarlo en la descripción del alojamiento.'}</p>
+    `;
+    gridStrong.appendChild(card);
+  }
+});
+if (!huboFortaleza){
+  gridStrong.innerHTML = '<p style="color:var(--slate); font-size:0.88rem;">No se detectaron temas repetidos con puntuación alta en este período.</p>';
+}
+
+/* ============================================================
+   5) CLIMA (10 días) Y EVENTOS (30 días) — generados al azar
+   ============================================================ */
+const condiciones = [
+  { ic:'☀️', label:'Soleado' }, { ic:'🌤️', label:'Parcialmente nublado' },
+  { ic:'☁️', label:'Nublado' }, { ic:'🌦️', label:'Lluvias aisladas' },
+  { ic:'🌧️', label:'Lluvioso' }, { ic:'⛈️', label:'Tormentas' }, { ic:'🌬️', label:'Ventoso' },
+];
+const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const weatherRow = document.getElementById('weather-row');
+const hoy = new Date('2026-06-19T00:00:00');
+for (let i=0; i<10; i++){
+  const d = new Date(hoy); d.setDate(hoy.getDate()+i);
+  const cond = condiciones[Math.floor(Math.random()*condiciones.length)];
+  const max = Math.round(8 + Math.random()*14);
+  const min = Math.round(max - (3 + Math.random()*6));
+  const div = document.createElement('div');
+  div.className = 'day-card';
+  div.innerHTML = `
+    <div class="d">${i===0?'Hoy':diasSemana[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}</div>
+    <div class="ic">${cond.ic}</div>
+    <div class="temp">${max}° <small>${min}°</small></div>
+    <div class="cond">${cond.label}</div>
+  `;
+  weatherRow.appendChild(div);
+}
+
+const tiposEvento = [
+  { cat:'Cultural', nombres:['Feria de artesanos', 'Festival de música local', 'Muestra de arte regional', 'Noche de teatro al aire libre'] },
+  { cat:'Gastronómico', nombres:['Feria gastronómica', 'Festival de la cerveza artesanal', 'Concurso de cocina regional'] },
+  { cat:'Deportivo', nombres:['Maratón ciudad', 'Torneo de pádel municipal', 'Triatlón costero'] },
+  { cat:'Turístico', nombres:['Fin de semana de promoción turística', 'Apertura de temporada en la zona', 'Jornada de puertas abiertas en bodegas'] },
+];
+const eventsList = document.getElementById('events-list');
+const cantidadEventos = 4 + Math.floor(Math.random()*3); // entre 4 y 6
+const diasUsados = new Set();
+for (let i=0; i<cantidadEventos; i++){
+  let offset;
+  do { offset = 1 + Math.floor(Math.random()*30); } while (diasUsados.has(offset));
+  diasUsados.add(offset);
+  const d = new Date(hoy); d.setDate(hoy.getDate()+offset);
+  const tipo = tiposEvento[Math.floor(Math.random()*tiposEvento.length)];
+  const nombre = tipo.nombres[Math.floor(Math.random()*tipo.nombres.length)];
+  const row = document.createElement('div');
+  row.className = 'event-row';
+  row.innerHTML = `
+    <div class="ed">${d.getDate()}/${d.getMonth()+1}</div>
+    <div class="et"><strong>${nombre}</strong><span>${diasSemana[d.getDay()]} · a ${offset} días de hoy</span></div>
+    <div class="cat">${tipo.cat}</div>
+  `;
+  eventsList.appendChild(row);
+}
+[...diasUsados].sort((a,b)=>a-b); // (orden interno, no afecta el render ya generado)
+
+/* ============================================================
+   5) FUNCIONES DE DIBUJO DE GRÁFICOS (Canvas nativo, sin librerías)
+   ============================================================ */
+function setupCanvas(id){
+  const canvas = document.getElementById(id);
+  const parent = canvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = parent.clientWidth;
+  const h = 220;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  return { ctx, w, h };
+}
+
+function drawBarChart(id, labels, values, colors){
+  const { ctx, w, h } = setupCanvas(id);
+  const padL = 28, padB = 26, padT = 12, padR = 10;
+  const chartW = w - padL - padR, chartH = h - padT - padB;
+  const maxVal = Math.max(...values, 1);
+  const n = values.length;
+  const gap = 16;
+  const barW = (chartW - gap*(n-1)) / n;
+
+  ctx.clearRect(0,0,w,h);
+  ctx.font = '11px Inter, sans-serif';
+  ctx.fillStyle = '#5C6B73';
+
+  // líneas guía horizontales
+  ctx.strokeStyle = '#eee';
+  for (let i=0; i<=4; i++){
+    const y = padT + chartH - (chartH * i/4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w-padR, y); ctx.stroke();
+    ctx.fillText(Math.round(maxVal*i/4), 2, y+4);
+  }
+
+  values.forEach((val, i) => {
+    const barH = (val / maxVal) * chartH;
+    const x = padL + i*(barW+gap);
+    const y = padT + chartH - barH;
+    ctx.fillStyle = colors[i] || '#1F6F6B';
+    const r = 5;
+    ctx.beginPath();
+    ctx.moveTo(x, y+r);
+    ctx.arcTo(x, y, x+r, y, r);
+    ctx.arcTo(x+barW, y, x+barW, y+r, r);
+    ctx.lineTo(x+barW, y+barH);
+    ctx.lineTo(x, y+barH);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#11253A';
+    ctx.font = '11px "IBM Plex Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(val, x+barW/2, y-6);
+    ctx.fillStyle = '#5C6B73';
+    ctx.font = '11px Inter, sans-serif';
+    ctx.fillText(labels[i], x+barW/2, h-8);
+    ctx.textAlign = 'left';
+  });
+}
+
+function drawLineChart(id, labels, values, color, minY, maxY){
+  const { ctx, w, h } = setupCanvas(id);
+  const padL = 28, padB = 26, padT = 16, padR = 10;
+  const chartW = w - padL - padR, chartH = h - padT - padB;
+  const n = values.length;
+
+  ctx.clearRect(0,0,w,h);
+  ctx.font = '11px Inter, sans-serif';
+
+  // líneas guía
+  ctx.strokeStyle = '#eee';
+  ctx.fillStyle = '#5C6B73';
+  for (let i=0; i<=4; i++){
+    const val = minY + (maxY-minY)*i/4;
+    const y = padT + chartH - (chartH * i/4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w-padR, y); ctx.stroke();
+    ctx.fillText(val.toFixed(1), 2, y+4);
+  }
+
+  if (n === 0) return;
+  const stepX = n > 1 ? chartW/(n-1) : 0;
+  const points = values.map((v,i) => ({
+    x: padL + i*stepX,
+    y: padT + chartH - ((v-minY)/(maxY-minY))*chartH
+  }));
+
+  // área debajo de la línea
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, padT+chartH);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length-1].x, padT+chartH);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(31,111,107,0.12)';
+  ctx.fill();
+
+  // línea
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2.4;
+  ctx.stroke();
+
+  // puntos y etiquetas
+  ctx.fillStyle = color;
+  points.forEach((p,i) => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#5C6B73';
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[i], p.x, h-8);
+    ctx.fillStyle = color;
+  });
+  ctx.textAlign = 'left';
+}
+
+window.addEventListener('resize', () => {
+  drawBarChart('chartStars', ['1★','2★','3★','4★','5★'], [dist[1],dist[2],dist[3],dist[4],dist[5]], ['#E0623F','#E0623F','#E8A33D','#1F6F6B','#1F6F6B']);
+  drawLineChart('chartTrend', labelsTrend, dataTrend, '#1F6F6B', 1, 5);
+});
+</script>
+</body>
+</html>
