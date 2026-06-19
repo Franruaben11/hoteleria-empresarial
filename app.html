@@ -214,7 +214,7 @@
     <div class="topbar" id="resumen">
       <div>
         <h1>Hola, Hotel Las Acacias 👋</h1>
-        <p>Este es el estado de tu alojamiento hoy, 19 de junio de 2026.</p>
+        <p id="topbar-subtitle">Este es el estado de tu alojamiento hoy.</p>
       </div>
       <div class="right">
         <select class="select-prop"><option>Hotel Las Acacias — sede principal</option></select>
@@ -226,23 +226,23 @@
     <div class="kpi-row">
       <div class="kpi">
         <div class="label">Reputación promedio</div>
-        <div class="value">4.3<small style="font-size:1rem; color:var(--slate);">/5</small></div>
-        <div class="delta up">▲ +0.2 vs. mes anterior</div>
+        <div class="value" id="kpi-reputation">—</div>
+        <div class="delta" id="kpi-reputation-delta">—</div>
       </div>
       <div class="kpi">
         <div class="label">Ocupación actual</div>
-        <div class="value">82%</div>
-        <div class="delta up">▲ +9 pts vs. semana pasada</div>
+        <div class="value" id="kpi-occupancy">—</div>
+        <div class="delta" id="kpi-occupancy-delta">—</div>
       </div>
       <div class="kpi">
         <div class="label">Precio sugerido / noche</div>
-        <div class="value">$84.500</div>
-        <div class="delta up">▲ +12% por demanda alta</div>
+        <div class="value" id="kpi-price">—</div>
+        <div class="delta" id="kpi-price-delta">—</div>
       </div>
       <div class="kpi">
         <div class="label">Reseñas este mes</div>
-        <div class="value">37</div>
-        <div class="delta down">▼ 4 negativas a resolver</div>
+        <div class="value" id="kpi-reviews-month">—</div>
+        <div class="delta" id="kpi-reviews-delta">—</div>
       </div>
     </div>
 
@@ -374,9 +374,9 @@
 
       <div class="reviews-summary">
         <div class="score-block">
-          <div class="num">4.3</div>
-          <div class="stars">★★★★☆</div>
-          <div class="count">Basado en 142 reseñas</div>
+          <div class="num" id="review-avg">—</div>
+          <div class="stars" id="review-stars">—</div>
+          <div class="count" id="review-count">—</div>
         </div>
         <div class="bar-dist" id="bar-dist"></div>
       </div>
@@ -393,7 +393,7 @@
       </div>
 
       <div class="review-list" id="review-list"></div>
-      <div class="show-more"><a href="#" class="btn btn-ghost">Ver las 142 reseñas</a></div>
+      <div class="show-more"><a href="#" class="btn btn-ghost" id="review-show-more">Ver todas las reseñas</a></div>
     </div>
 
     <!-- ============ RECOMENDACIONES ============ -->
@@ -409,7 +409,7 @@
     <!-- ============ CLIMA Y EVENTOS ============ -->
     <div class="card" id="clima">
       <h2>Clima y eventos cercanos</h2>
-      <p class="sub">Pronóstico para los próximos 10 días en la ubicación del alojamiento y eventos previstos en la zona durante el próximo mes. Datos simulados a modo de demostración.</p>
+      <p class="sub">Pronóstico para los próximos 10 días en la ubicación del alojamiento y eventos previstos en la zona durante el próximo mes. Datos de demostración coherentes con la fecha de referencia del panel.</p>
       <div class="weather-row" id="weather-row"></div>
       <h3 style="font-size:0.92rem; margin:26px 0 12px;">Eventos en los próximos 30 días</h3>
       <div class="events-list" id="events-list"></div>
@@ -420,358 +420,499 @@
 
 <script>
 /* ============================================================
-   1) CALCULADORA DE PRECIO — fórmula estática, solo con datos
-      que el usuario publica (sin fuentes externas).
+   FUENTE ÚNICA DE DATOS — todo el panel consume desde acá
    ============================================================ */
-function calcularPrecio(){
-  const tipo = document.getElementById('tipo').value;
-  const ubicacion = document.getElementById('ubicacion').value;
-  const m2cub = parseFloat(document.getElementById('m2cub').value) || 0;
-  const m2tot = parseFloat(document.getElementById('m2tot').value) || 0;
-  const capacidad = parseFloat(document.getElementById('capacidad').value) || 1;
-  const habitaciones = parseFloat(document.getElementById('habitaciones').value) || 1;
-  const camas = parseFloat(document.getElementById('camas').value) || 1;
-  const banos = parseFloat(document.getElementById('banos').value) || 1;
-  const cocina = document.getElementById('cocina').checked;
-  const checkin = new Date(document.getElementById('checkin').value + 'T00:00:00');
-  const noches = parseFloat(document.getElementById('noches').value) || 1;
+const DATA = {
+  hotel: {
+    name: 'Hotel Las Acacias',
+    location: 'Mar del Plata, AR',
+    referenceDate: '2026-06-19',
+  },
+  occupancy: {
+    current: 82,
+    deltaPts: 9,
+  },
+  reviews: [
+    {name:'Marina G.', rating:5, date:'12 jun 2026', iso:'2026-06-12', topic:'Limpieza', text:'Impecable de principio a fin. La habitación estaba perfectamente limpia y el personal fue muy atento durante toda la estadía.'},
+    {name:'Diego R.', rating:2, date:'08 jun 2026', iso:'2026-06-08', topic:'Desayuno', text:'El desayuno tiene muy poca variedad para quienes comemos sin TACC. Solo había una opción y se terminaba temprano.'},
+    {name:'Florencia P.', rating:5, date:'05 jun 2026', iso:'2026-06-05', topic:'Pileta', text:'La pileta climatizada fue el punto más alto. Pasamos horas ahí con los chicos y siempre estaba en buen estado.'},
+    {name:'Tomás L.', rating:1, date:'02 jun 2026', iso:'2026-06-02', topic:'Wifi', text:'El wifi prácticamente no llegaba a la habitación. Tuve que trabajar desde el lobby todo el fin de semana.'},
+    {name:'Carla M.', rating:4, date:'29 may 2026', iso:'2026-05-29', topic:'Ubicación', text:'Muy bien ubicado, a pocas cuadras de todo. Solo restaría un poco más de señalización para llegar caminando.'},
+    {name:'Joaquín F.', rating:5, date:'24 may 2026', iso:'2026-05-24', topic:'Atención', text:'El personal de recepción nos ayudó a reorganizar toda la estadía cuando se complicó el clima. Atención excelente.'},
+    {name:'Valentina S.', rating:2, date:'19 may 2026', iso:'2026-05-19', topic:'Ruido', text:'Se escuchaba muchísimo la calle desde la habitación. No pudimos descansar bien ninguna de las dos noches.'},
+    {name:'Nicolás B.', rating:3, date:'15 may 2026', iso:'2026-05-15', topic:'Estacionamiento', text:'El estacionamiento es muy chico para la cantidad de autos. Tuvimos que dejar el auto a dos cuadras la primera noche.'},
+    {name:'Lucía A.', rating:5, date:'11 may 2026', iso:'2026-05-11', topic:'Habitación', text:'La habitación superó lo que esperábamos por el precio. Muy cómoda, con buena vista y todo nuevo.'},
+    {name:'Martín D.', rating:1, date:'07 may 2026', iso:'2026-05-07', topic:'Aire acondicionado', text:'El aire acondicionado no funcionaba y avisamos dos veces en recepción sin solución durante toda la estadía.'},
+    {name:'Sofía N.', rating:4, date:'02 may 2026', iso:'2026-05-02', topic:'Spa', text:'El spa estuvo muy bueno, aunque convendría tener más turnos disponibles porque se llena rápido los fines de semana.'},
+    {name:'Pablo E.', rating:5, date:'27 abr 2026', iso:'2026-04-27', topic:'Parrilla', text:'La parrilla fue ideal para juntarnos en familia. Estaba en buen estado y con todo lo necesario a mano.'},
+    {name:'Romina V.', rating:4, date:'20 abr 2026', iso:'2026-04-20', topic:'Habitación', text:'Muy buena relación precio-calidad. La cama era cómoda y la habitación tenía buena luz natural.'},
+    {name:'Federico C.', rating:2, date:'14 abr 2026', iso:'2026-04-14', topic:'Limpieza', text:'Encontramos la habitación con la limpieza a medio hacer al llegar. Tuvimos que esperar casi una hora.'},
+    {name:'Agustina T.', rating:5, date:'30 mar 2026', iso:'2026-03-30', topic:'Atención', text:'Nos recibieron de noche y aun así el personal fue súper amable y nos explicó todo con calma.'},
+    {name:'Ezequiel O.', rating:3, date:'18 mar 2026', iso:'2026-03-18', topic:'Wifi', text:'El wifi funciona bien en las áreas comunes pero en la habitación se corta seguido.'},
+    {name:'Camila H.', rating:4, date:'05 mar 2026', iso:'2026-03-05', topic:'Pileta', text:'La pileta es chica para la cantidad de huéspedes en temporada, pero está siempre limpia.'},
+    {name:'Gonzalo I.', rating:1, date:'21 feb 2026', iso:'2026-02-21', topic:'Estacionamiento', text:'Pagamos por estacionamiento y al llegar no había lugar disponible. Mala comunicación de parte del hotel.'},
+    {name:'Brenda K.', rating:1, date:'15 feb 2026', iso:'2026-02-15', topic:'Limpieza', text:'Llegamos y la habitación tenía pelos en la cama y el baño sin limpiar. Tuvimos que reclamar para que la arreglaran.'},
+    {name:'Ramiro Q.', rating:2, date:'09 feb 2026', iso:'2026-02-09', topic:'Limpieza', text:'La habitación olía a humedad y se notaba que no habían pasado bien el trapo en el piso del baño.'},
+    {name:'Yamila W.', rating:1, date:'30 ene 2026', iso:'2026-01-30', topic:'Limpieza', text:'Encontramos manchas en las sábanas. Por suerte el personal las cambió rápido cuando avisamos, pero no debería pasar.'},
+    {name:'Hernán J.', rating:5, date:'24 ene 2026', iso:'2026-01-24', topic:'Pileta', text:'La pileta es enorme y está siempre impecable. Fue lo mejor de la estadía para toda la familia.'},
+    {name:'Daniela X.', rating:4, date:'18 ene 2026', iso:'2026-01-18', topic:'Pileta', text:'Muy buena pileta, con reposeras suficientes incluso en un fin de semana lleno.'},
+    {name:'Iván Z.', rating:5, date:'12 ene 2026', iso:'2026-01-12', topic:'Atención', text:'Desde que llegamos hasta que nos fuimos, el personal estuvo siempre disponible y de buen humor. Se nota que les gusta lo que hacen.'},
+    {name:'Paula Y.', rating:5, date:'05 ene 2026', iso:'2026-01-05', topic:'Atención', text:'Nos ayudaron a último momento a cambiar la fecha de salida sin ningún problema. Atención de primera.'},
+  ],
+  weather: [
+    { offset: 0, icon: '☁️', label: 'Nublado', max: 14, min: 8 },
+    { offset: 1, icon: '🌦️', label: 'Lluvias aisladas', max: 13, min: 7 },
+    { offset: 2, icon: '🌧️', label: 'Lluvioso', max: 12, min: 6 },
+    { offset: 3, icon: '☁️', label: 'Nublado', max: 13, min: 7 },
+    { offset: 4, icon: '🌤️', label: 'Parcialmente nublado', max: 15, min: 9 },
+    { offset: 5, icon: '☀️', label: 'Soleado', max: 16, min: 10 },
+    { offset: 6, icon: '🌤️', label: 'Parcialmente nublado', max: 15, min: 9 },
+    { offset: 7, icon: '☁️', label: 'Nublado', max: 14, min: 8 },
+    { offset: 8, icon: '🌬️', label: 'Ventoso', max: 13, min: 7 },
+    { offset: 9, icon: '🌦️', label: 'Lluvias aisladas', max: 12, min: 6 },
+  ],
+  events: [
+    { offset: 2, name: 'Feria de artesanos', category: 'Cultural' },
+    { offset: 9, name: 'Festival de música local', category: 'Cultural' },
+    { offset: 14, name: 'Maratón ciudad', category: 'Deportivo' },
+    { offset: 21, name: 'Feria gastronómica', category: 'Gastronómico' },
+    { offset: 28, name: 'Fin de semana de promoción turística', category: 'Turístico' },
+  ],
+  sugerenciaMejora: {
+    'Desayuno': 'Sumar al menos una opción sin TACC y una opción vegana fija en el buffet reduciría este tipo de quejas.',
+    'Wifi': 'Instalar un repetidor de señal por piso suele resolver la cobertura despareja en las habitaciones.',
+    'Ruido': 'Vidrios DVH o cortinas con refuerzo acústico en las habitaciones que dan a la calle mejorarían el descanso.',
+    'Estacionamiento': 'Conviene reorganizar el espacio disponible o convenir con un estacionamiento cercano para los picos de ocupación.',
+    'Aire acondicionado': 'Un mantenimiento preventivo de los equipos antes de cada temporada alta evitaría este tipo de reclamos.',
+    'Limpieza': 'Reforzar el equipo de limpieza en los horarios de mayor rotación de huéspedes evitaría demoras al check-in.',
+    'Spa': 'Ampliar los turnos disponibles, sobre todo los fines de semana, evitaría la saturación del servicio.',
+  },
+  descripcionFortaleza: {
+    'Pileta': 'Es uno de los espacios más mencionados de forma positiva por los huéspedes.',
+    'Atención': 'El personal recibe elogios constantes por su trato y disposición.',
+    'Habitación': 'La relación entre comodidad y precio de las habitaciones es muy bien valorada.',
+    'Parrilla': 'El espacio de parrilla es destacado especialmente por huéspedes que viajan en grupo o en familia.',
+    'Ubicación': 'La cercanía a los puntos de interés es un diferencial frente a otros alojamientos de la zona.',
+    'Limpieza': 'La limpieza general del alojamiento recibe valoraciones consistentemente altas.',
+    'Spa': 'El servicio de spa es uno de los más elogiados entre los servicios pagos.',
+  },
+};
 
-  const servicios = {
-    wifi: document.getElementById('s-wifi').checked,
-    ac: document.getElementById('s-ac').checked,
-    desayuno: document.getElementById('s-desayuno').checked,
-    parrilla: document.getElementById('s-parrilla').checked,
-    pileta: document.getElementById('s-pileta').checked,
-    estacionamiento: document.getElementById('s-estacionamiento').checked,
-    limpieza: document.getElementById('s-limpieza').checked,
-    spa: document.getElementById('s-spa').checked,
-  };
+const DIAS_SEMANA = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const NOMBRE_MES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const UMBRAL_RECO = 2;
 
-  // --- Base según tipo de alojamiento (ARS, valor de referencia) ---
-  const baseTipo = { hostel: 18000, cabana: 32000, apart: 28000, hotel: 30000, 'hotel-boutique': 42000 };
-  let base = baseTipo[tipo] ?? 28000;
+let chartState = { dist: {}, labelsTrend: [], dataTrend: [] };
 
-  // --- Ajuste por superficie ---
-  base += m2cub * 350;
-  base += Math.max(0, m2tot - m2cub) * 120; // exterior pondera menos que cubierto
+function refDate(){ return new Date(DATA.hotel.referenceDate + 'T00:00:00'); }
 
-  // --- Ajuste por capacidad/estructura ---
-  base += (capacidad - 1) * 4200;
-  base += (habitaciones - 1) * 3800;
-  base += (camas - capacidad) > 0 ? (camas - capacidad) * 1200 : 0; // camas extra
-  base += (banos - 1) * 2600;
-  if (cocina) base += 3500;
-
-  // --- Ajuste por servicios ---
-  const valorServicio = { wifi: 1200, ac: 2800, desayuno: 4500, parrilla: 1800, pileta: 6500, estacionamiento: 2200, limpieza: 3200, spa: 7800 };
-  let serviciosTotal = 0;
-  Object.keys(servicios).forEach(k => { if (servicios[k]) serviciosTotal += valorServicio[k]; });
-  base += serviciosTotal;
-
-  // --- Ajuste por ubicación (solo dos zonas) ---
-  const multUbicacion = { centro: 1.15, afueras: 0.9 };
-  let conUbicacion = base * (multUbicacion[ubicacion] ?? 1);
-
-  // --- Ajuste por fin de semana (cualquier check-in viernes/sábado) ---
-  let multFinde = 1;
-  let etiquetaFinde = 'Día de semana';
-  if (!isNaN(checkin.getTime())){
-    const dia = checkin.getDay(); // 0 domingo ... 6 sábado
-    if (dia === 5 || dia === 6) { multFinde = 1.12; etiquetaFinde = 'Fin de semana'; }
-  }
-
-  // --- Temporada: calculada automáticamente según calendario, no se pregunta al usuario ---
-  const { esAlta, motivo } = esTemporadaAlta(checkin);
-  const multTemporada = esAlta ? 1.32 : 0.9;
-  document.getElementById('out-temporada').textContent = esAlta
-    ? `Temporada alta — ${motivo}`
-    : `Temporada baja — ${motivo}`;
-
-  let precioFinal = conUbicacion * multFinde * multTemporada;
-  precioFinal = Math.round(precioFinal / 100) * 100; // redondeo a centena
-
-  // Salida
-  document.getElementById('out-price').innerHTML = `$${precioFinal.toLocaleString('es-AR')}<small> / noche</small>`;
-  const min = Math.round(precioFinal*0.9/100)*100, max = Math.round(precioFinal*1.1/100)*100;
-  document.getElementById('out-range').textContent = `Rango competitivo sugerido: $${min.toLocaleString('es-AR')} – $${max.toLocaleString('es-AR')}`;
-
-  document.getElementById('out-breakdown').innerHTML = `
-    <div class="row"><span>Base por tipo y tamaño</span><span>$${Math.round(base - serviciosTotal).toLocaleString('es-AR')}</span></div>
-    <div class="row"><span>Servicios incluidos (+${Object.values(servicios).filter(Boolean).length})</span><span>+$${serviciosTotal.toLocaleString('es-AR')}</span></div>
-    <div class="row"><span>Ubicación: ${ubicacion === 'centro' ? 'zona céntrica' : 'afueras de la ciudad'}</span><span>×${(multUbicacion[ubicacion] ?? 1).toFixed(2)}</span></div>
-    <div class="row"><span>${etiquetaFinde}</span><span>×${multFinde.toFixed(2)}</span></div>
-    <div class="row"><span>${esAlta ? 'Temporada alta' : 'Temporada baja'}</span><span>×${multTemporada.toFixed(2)}</span></div>
-    <div class="row total"><span>Precio sugerido</span><span>$${precioFinal.toLocaleString('es-AR')}</span></div>
-  `;
+function formatFechaLarga(iso){
+  return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-/* ---- Detección de temporada alta a partir de un calendario fijo ----
-   Temporada alta: vacaciones de verano e invierno, Semana Santa,
-   Navidad/Año Nuevo y fines de semana largo. Todo lo demás, temporada baja. */
+function starString(n){ return '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n); }
+
+function setDelta(el, text, direction){
+  el.textContent = text;
+  el.className = 'delta ' + (direction === 'up' ? 'up' : direction === 'down' ? 'down' : '');
+}
+
+/* ---- Métricas derivadas de reseñas ---- */
+function computeReviewMetrics(){
+  const reviews = DATA.reviews;
+  const ref = refDate();
+  const refYear = ref.getFullYear();
+  const refMonth = ref.getMonth();
+
+  const dist = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let sumaTotal = 0;
+  reviews.forEach(r => {
+    dist[r.rating]++;
+    sumaTotal += r.rating;
+  });
+
+  const total = reviews.length;
+  const promedio = total ? Math.round((sumaTotal / total) * 10) / 10 : 0;
+
+  const delMes = reviews.filter(r => {
+    const d = new Date(r.iso + 'T00:00:00');
+    return d.getFullYear() === refYear && d.getMonth() === refMonth;
+  });
+  const negativasMes = delMes.filter(r => r.rating <= 2).length;
+
+  const prevMonth = refMonth === 0 ? 11 : refMonth - 1;
+  const prevYear = refMonth === 0 ? refYear - 1 : refYear;
+  const avgFor = (year, month) => {
+    const subset = reviews.filter(r => {
+      const d = new Date(r.iso + 'T00:00:00');
+      return d.getFullYear() === year && d.getMonth() === month;
+    });
+    if (!subset.length) return null;
+    return subset.reduce((s, r) => s + r.rating, 0) / subset.length;
+  };
+  const avgActual = avgFor(refYear, refMonth);
+  const avgAnterior = avgFor(prevYear, prevMonth);
+  const deltaRep = (avgActual != null && avgAnterior != null)
+    ? Math.round((avgActual - avgAnterior) * 10) / 10
+    : null;
+
+  const porMes = {};
+  reviews.forEach(r => {
+    const d = new Date(r.iso + 'T00:00:00');
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    if (!porMes[key]) porMes[key] = { suma: 0, n: 0, mes: d.getMonth(), anio: d.getFullYear() };
+    porMes[key].suma += r.rating;
+    porMes[key].n += 1;
+  });
+  const mesesOrdenados = Object.values(porMes).sort((a, b) => (a.anio - b.anio) || (a.mes - b.mes));
+  const labelsTrend = mesesOrdenados.map(m => `${NOMBRE_MES[m.mes]} ${m.anio}`);
+  const dataTrend = mesesOrdenados.map(m => Math.round((m.suma / m.n) * 10) / 10);
+
+  return {
+    dist, total, promedio, delMes, negativasMes, deltaRep,
+    labelsTrend, dataTrend,
+  };
+}
+
+/* ============================================================
+   CALCULADORA DE PRECIO
+   ============================================================ */
 function esTemporadaAlta(fecha){
-  if (isNaN(fecha.getTime())) return { esAlta:false, motivo:'fecha no definida' };
+  if (isNaN(fecha.getTime())) return { esAlta: false, motivo: 'fecha no definida' };
   const y = fecha.getFullYear();
   const inRange = (ini, fin) => fecha >= ini && fecha <= fin;
 
-  // Vacaciones de verano (dic-feb)
-  if (inRange(new Date(y,11,15), new Date(y,11,31)) || inRange(new Date(y,0,1), new Date(y,1,28))) {
-    return { esAlta:true, motivo:'vacaciones de verano' };
+  if (inRange(new Date(y, 11, 15), new Date(y, 11, 31)) || inRange(new Date(y, 0, 1), new Date(y, 1, 28))) {
+    return { esAlta: true, motivo: 'vacaciones de verano' };
   }
-  // Vacaciones de invierno (julio)
-  if (inRange(new Date(y,6,1), new Date(y,6,31))) {
-    return { esAlta:true, motivo:'vacaciones de invierno' };
+  if (inRange(new Date(y, 6, 1), new Date(y, 6, 31))) {
+    return { esAlta: true, motivo: 'vacaciones de invierno' };
   }
-  // Semana Santa 2026: 2 al 5 de abril
-  if (inRange(new Date(2026,2,30), new Date(2026,3,5))) {
-    return { esAlta:true, motivo:'Semana Santa' };
+  if (inRange(new Date(2026, 2, 30), new Date(2026, 3, 5))) {
+    return { esAlta: true, motivo: 'Semana Santa' };
   }
-  // Navidad y Año Nuevo
-  if (inRange(new Date(y,11,23), new Date(y,11,31)) || inRange(new Date(y,0,1), new Date(y,0,2))) {
-    return { esAlta:true, motivo:'Navidad / Año Nuevo' };
+  if (inRange(new Date(y, 11, 23), new Date(y, 11, 31)) || inRange(new Date(y, 0, 1), new Date(y, 0, 2))) {
+    return { esAlta: true, motivo: 'Navidad / Año Nuevo' };
   }
-  // Fines de semana largo 2026 (Argentina, feriados turísticos trasladables)
   const findesLargos2026 = [
-    ['2026-02-14','2026-02-17','Carnaval'],
-    ['2026-03-21','2026-03-23','Día Nacional de la Memoria'],
-    ['2026-05-01','2026-05-03','Día del Trabajador'],
-    ['2026-06-19','2026-06-21','Paso a la Inmortalidad del Gral. Güemes'],
-    ['2026-08-15','2026-08-17','Paso a la Inmortalidad del Gral. San Martín'],
-    ['2026-10-10','2026-10-12','Día del Respeto a la Diversidad Cultural'],
-    ['2026-11-20','2026-11-22','Día de la Soberanía Nacional'],
+    ['2026-02-14', '2026-02-17', 'Carnaval'],
+    ['2026-03-21', '2026-03-23', 'Día Nacional de la Memoria'],
+    ['2026-05-01', '2026-05-03', 'Día del Trabajador'],
+    ['2026-06-19', '2026-06-21', 'Paso a la Inmortalidad del Gral. Güemes'],
+    ['2026-08-15', '2026-08-17', 'Paso a la Inmortalidad del Gral. San Martín'],
+    ['2026-10-10', '2026-10-12', 'Día del Respeto a la Diversidad Cultural'],
+    ['2026-11-20', '2026-11-22', 'Día de la Soberanía Nacional'],
   ];
-  for (const [ini, fin, nombre] of findesLargos2026){
-    if (inRange(new Date(ini+'T00:00:00'), new Date(fin+'T23:59:59'))) {
-      return { esAlta:true, motivo:`fin de semana largo — ${nombre}` };
+  for (const [ini, fin, nombre] of findesLargos2026) {
+    if (inRange(new Date(ini + 'T00:00:00'), new Date(fin + 'T23:59:59'))) {
+      return { esAlta: true, motivo: `fin de semana largo — ${nombre}` };
     }
   }
-  return { esAlta:false, motivo:'sin eventos de temporada alta en esta fecha' };
+  return { esAlta: false, motivo: 'sin eventos de temporada alta en esta fecha' };
 }
 
-['tipo','ubicacion','m2cub','m2tot','capacidad','habitaciones','camas','banos','cocina','checkin','noches',
- 's-wifi','s-ac','s-desayuno','s-parrilla','s-pileta','s-estacionamiento','s-limpieza','s-spa'
-].forEach(id => document.getElementById(id).addEventListener('input', calcularPrecio));
-calcularPrecio();
+function calcularPrecioBase(opts){
+  const baseTipo = { hostel: 18000, cabana: 32000, apart: 28000, hotel: 30000, 'hotel-boutique': 42000 };
+  let base = baseTipo[opts.tipo] ?? 28000;
+  base += opts.m2cub * 350;
+  base += Math.max(0, opts.m2tot - opts.m2cub) * 120;
+  base += (opts.capacidad - 1) * 4200;
+  base += (opts.habitaciones - 1) * 3800;
+  base += (opts.camas - opts.capacidad) > 0 ? (opts.camas - opts.capacidad) * 1200 : 0;
+  base += (opts.banos - 1) * 2600;
+  if (opts.cocina) base += 3500;
 
-document.getElementById('btn-guardar-aloj').addEventListener('click', () => {
-  const msg = document.getElementById('guardado-msg');
-  msg.style.opacity = '1';
-  setTimeout(() => { msg.style.opacity = '0'; }, 2200);
-});
+  const valorServicio = { wifi: 1200, ac: 2800, desayuno: 4500, parrilla: 1800, pileta: 6500, estacionamiento: 2200, limpieza: 3200, spa: 7800 };
+  let serviciosTotal = 0;
+  Object.keys(opts.servicios).forEach(k => { if (opts.servicios[k]) serviciosTotal += valorServicio[k]; });
+  base += serviciosTotal;
 
-/* ============================================================
-   2) RESEÑAS GENERADAS (mock) + render
-   ============================================================ */
-const reviews = [
-  {name:'Marina G.', rating:5, date:'12 jun 2026', iso:'2026-06-12', topic:'Limpieza', text:'Impecable de principio a fin. La habitación estaba perfectamente limpia y el personal fue muy atento durante toda la estadía.'},
-  {name:'Diego R.', rating:2, date:'08 jun 2026', iso:'2026-06-08', topic:'Desayuno', text:'El desayuno tiene muy poca variedad para quienes comemos sin TACC. Solo había una opción y se terminaba temprano.'},
-  {name:'Florencia P.', rating:5, date:'05 jun 2026', iso:'2026-06-05', topic:'Pileta', text:'La pileta climatizada fue el punto más alto. Pasamos horas ahí con los chicos y siempre estaba en buen estado.'},
-  {name:'Tomás L.', rating:1, date:'02 jun 2026', iso:'2026-06-02', topic:'Wifi', text:'El wifi prácticamente no llegaba a la habitación. Tuve que trabajar desde el lobby todo el fin de semana.'},
-  {name:'Carla M.', rating:4, date:'29 may 2026', iso:'2026-05-29', topic:'Ubicación', text:'Muy bien ubicado, a pocas cuadras de todo. Solo restaría un poco más de señalización para llegar caminando.'},
-  {name:'Joaquín F.', rating:5, date:'24 may 2026', iso:'2026-05-24', topic:'Atención', text:'El personal de recepción nos ayudó a reorganizar toda la estadía cuando se complicó el clima. Atención excelente.'},
-  {name:'Valentina S.', rating:2, date:'19 may 2026', iso:'2026-05-19', topic:'Ruido', text:'Se escuchaba muchísimo la calle desde la habitación. No pudimos descansar bien ninguna de las dos noches.'},
-  {name:'Nicolás B.', rating:3, date:'15 may 2026', iso:'2026-05-15', topic:'Estacionamiento', text:'El estacionamiento es muy chico para la cantidad de autos. Tuvimos que dejar el auto a dos cuadras la primera noche.'},
-  {name:'Lucía A.', rating:5, date:'11 may 2026', iso:'2026-05-11', topic:'Habitación', text:'La habitación superó lo que esperábamos por el precio. Muy cómoda, con buena vista y todo nuevo.'},
-  {name:'Martín D.', rating:1, date:'07 may 2026', iso:'2026-05-07', topic:'Aire acondicionado', text:'El aire acondicionado no funcionaba y avisamos dos veces en recepción sin solución durante toda la estadía.'},
-  {name:'Sofía N.', rating:4, date:'02 may 2026', iso:'2026-05-02', topic:'Spa', text:'El spa estuvo muy bueno, aunque convendría tener más turnos disponibles porque se llena rápido los fines de semana.'},
-  {name:'Pablo E.', rating:5, date:'27 abr 2026', iso:'2026-04-27', topic:'Parrilla', text:'La parrilla fue ideal para juntarnos en familia. Estaba en buen estado y con todo lo necesario a mano.'},
-  {name:'Romina V.', rating:4, date:'20 abr 2026', iso:'2026-04-20', topic:'Habitación', text:'Muy buena relación precio-calidad. La cama era cómoda y la habitación tenía buena luz natural.'},
-  {name:'Federico C.', rating:2, date:'14 abr 2026', iso:'2026-04-14', topic:'Limpieza', text:'Encontramos la habitación con la limpieza a medio hacer al llegar. Tuvimos que esperar casi una hora.'},
-  {name:'Agustina T.', rating:5, date:'30 mar 2026', iso:'2026-03-30', topic:'Atención', text:'Nos recibieron de noche y aun así el personal fue súper amable y nos explicó todo con calma.'},
-  {name:'Ezequiel O.', rating:3, date:'18 mar 2026', iso:'2026-03-18', topic:'Wifi', text:'El wifi funciona bien en las áreas comunes pero en la habitación se corta seguido.'},
-  {name:'Camila H.', rating:4, date:'05 mar 2026', iso:'2026-03-05', topic:'Pileta', text:'La pileta es chica para la cantidad de huéspedes en temporada, pero está siempre limpia.'},
-  {name:'Gonzalo I.', rating:1, date:'21 feb 2026', iso:'2026-02-21', topic:'Estacionamiento', text:'Pagamos por estacionamiento y al llegar no había lugar disponible. Mala comunicación de parte del hotel.'},
-  {name:'Brenda K.', rating:1, date:'15 feb 2026', iso:'2026-02-15', topic:'Limpieza', text:'Llegamos y la habitación tenía pelos en la cama y el baño sin limpiar. Tuvimos que reclamar para que la arreglaran.'},
-  {name:'Ramiro Q.', rating:2, date:'09 feb 2026', iso:'2026-02-09', topic:'Limpieza', text:'La habitación olía a humedad y se notaba que no habían pasado bien el trapo en el piso del baño.'},
-  {name:'Yamila W.', rating:1, date:'30 ene 2026', iso:'2026-01-30', topic:'Limpieza', text:'Encontramos manchas en las sábanas. Por suerte el personal las cambió rápido cuando avisamos, pero no debería pasar.'},
-  {name:'Hernán J.', rating:5, date:'24 ene 2026', iso:'2026-01-24', topic:'Pileta', text:'La pileta es enorme y está siempre impecable. Fue lo mejor de la estadía para toda la familia.'},
-  {name:'Daniela X.', rating:4, date:'18 ene 2026', iso:'2026-01-18', topic:'Pileta', text:'Muy buena pileta, con reposeras suficientes incluso en un fin de semana lleno.'},
-  {name:'Iván Z.', rating:5, date:'12 ene 2026', iso:'2026-01-12', topic:'Atención', text:'Desde que llegamos hasta que nos fuimos, el personal estuvo siempre disponible y de buen humor. Se nota que les gusta lo que hacen.'},
-  {name:'Paula Y.', rating:5, date:'05 ene 2026', iso:'2026-01-05', topic:'Atención', text:'Nos ayudaron a último momento a cambiar la fecha de salida sin ningún problema. Atención de primera.'},
-];
+  const multUbicacion = { centro: 1.15, afueras: 0.9 };
+  let conUbicacion = base * (multUbicacion[opts.ubicacion] ?? 1);
 
-function starString(n){ return '★★★★★'.slice(0,n) + '☆☆☆☆☆'.slice(0, 5-n); }
-
-const reviewListEl = document.getElementById('review-list');
-reviews.forEach(r => {
-  const div = document.createElement('div');
-  div.className = 'review ' + (r.rating >= 4 ? 'pos' : 'neg');
-  div.innerHTML = `
-    <div class="head"><span class="name">${r.name}</span><span class="date">${r.date}</span></div>
-    <div class="stars" style="color: var(--amber);">${starString(r.rating)}</div>
-    <p>${r.text}</p>
-    <span class="topic">${r.topic}</span>
-  `;
-  reviewListEl.appendChild(div);
-});
-
-// Distribución de estrellas (incluye reseñas no listadas, total 142)
-const dist = {5: 71, 4: 38, 3: 16, 2: 11, 1: 6};
-const totalRev = Object.values(dist).reduce((a,b)=>a+b,0);
-const barDistEl = document.getElementById('bar-dist');
-[5,4,3,2,1].forEach(star => {
-  const pct = Math.round(dist[star]/totalRev*100);
-  const row = document.createElement('div');
-  row.className = 'r';
-  row.innerHTML = `<span>${star} ★</span><div class="track"><div class="fill" style="width:${pct}%"></div></div><span>${pct}%</span>`;
-  barDistEl.appendChild(row);
-});
-
-/* ============================================================
-   3) GRÁFICOS
-   ============================================================ */
-drawBarChart('chartStars', ['1★','2★','3★','4★','5★'], [dist[1],dist[2],dist[3],dist[4],dist[5]],
-  ['#E0623F','#E0623F','#E8A33D','#1F6F6B','#1F6F6B']);
-
-// Evolución de reputación calculada a partir de las reseñas (promedio mensual)
-const nombreMes = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const porMes = {};
-reviews.forEach(r => {
-  const d = new Date(r.iso + 'T00:00:00');
-  const key = `${d.getFullYear()}-${d.getMonth()}`;
-  if (!porMes[key]) porMes[key] = { suma:0, n:0, mes:d.getMonth(), anio:d.getFullYear() };
-  porMes[key].suma += r.rating;
-  porMes[key].n += 1;
-});
-const mesesOrdenados = Object.values(porMes).sort((a,b) => (a.anio - b.anio) || (a.mes - b.mes));
-const labelsTrend = mesesOrdenados.map(m => `${nombreMes[m.mes]} ${m.anio}`);
-const dataTrend = mesesOrdenados.map(m => Math.round((m.suma / m.n) * 10) / 10);
-
-drawLineChart('chartTrend', labelsTrend, dataTrend, '#1F6F6B', 1, 5);
-
-/* ============================================================
-   4) RECOMENDACIONES AUTOMÁTICAS
-      Se agrupan las reseñas por tema. Si un mismo tema se repite
-      en varias reseñas de puntuación baja (1-2★), se genera una
-      alerta de mejora. Si se repite en reseñas de puntuación alta
-      (4-5★), se muestra como fortaleza del alojamiento.
-   ============================================================ */
-const sugerenciaMejora = {
-  'Desayuno': 'Sumar al menos una opción sin TACC y una opción vegana fija en el buffet reduciría este tipo de quejas.',
-  'Wifi': 'Instalar un repetidor de señal por piso suele resolver la cobertura despareja en las habitaciones.',
-  'Ruido': 'Vidrios DVH o cortinas con refuerzo acústico en las habitaciones que dan a la calle mejorarían el descanso.',
-  'Estacionamiento': 'Conviene reorganizar el espacio disponible o convenir con un estacionamiento cercano para los picos de ocupación.',
-  'Aire acondicionado': 'Un mantenimiento preventivo de los equipos antes de cada temporada alta evitaría este tipo de reclamos.',
-  'Limpieza': 'Reforzar el equipo de limpieza en los horarios de mayor rotación de huéspedes evitaría demoras al check-in.',
-  'Spa': 'Ampliar los turnos disponibles, sobre todo los fines de semana, evitaría la saturación del servicio.',
-};
-const descripcionFortaleza = {
-  'Pileta': 'Es uno de los espacios más mencionados de forma positiva por los huéspedes.',
-  'Atención': 'El personal recibe elogios constantes por su trato y disposición.',
-  'Habitación': 'La relación entre comodidad y precio de las habitaciones es muy bien valorada.',
-  'Parrilla': 'El espacio de parrilla es destacado especialmente por huéspedes que viajan en grupo o en familia.',
-  'Ubicación': 'La cercanía a los puntos de interés es un diferencial frente a otros alojamientos de la zona.',
-  'Limpieza': 'La limpieza general del alojamiento recibe valoraciones consistentemente altas.',
-  'Spa': 'El servicio de spa es uno de los más elogiados entre los servicios pagos.',
-};
-
-// Agrupar reseñas por tema
-const porTema = {};
-reviews.forEach(r => {
-  if (!porTema[r.topic]) porTema[r.topic] = { bajas: [], altas: [] };
-  if (r.rating <= 2) porTema[r.topic].bajas.push(r);
-  if (r.rating >= 4) porTema[r.topic].altas.push(r);
-});
-
-const gridWeak = document.getElementById('reco-grid-weak');
-const gridStrong = document.getElementById('reco-grid-strong');
-const UMBRAL = 2; // mínimo de reseñas repetidas para generar la recomendación
-
-let huboDebilidad = false;
-Object.entries(porTema).forEach(([tema, grupo]) => {
-  if (grupo.bajas.length >= UMBRAL){
-    huboDebilidad = true;
-    const ejemplo = grupo.bajas[0];
-    const card = document.createElement('div');
-    card.className = 'reco-card weakness';
-    card.innerHTML = `
-      <div class="src">Tema repetido en reseñas negativas <span class="count-badge">${grupo.bajas.length} reseñas · 1-2★</span></div>
-      <h4>Mejorar: ${tema.toLowerCase()}</h4>
-      <div class="quote">"${ejemplo.text}" — ${ejemplo.name}</div>
-      <p>${sugerenciaMejora[tema] || 'Revisar este punto con el equipo operativo, ya que se repite en varias reseñas con puntuación baja.'}</p>
-    `;
-    gridWeak.appendChild(card);
+  let multFinde = 1;
+  let etiquetaFinde = 'Día de semana';
+  if (!isNaN(opts.checkin.getTime())) {
+    const dia = opts.checkin.getDay();
+    if (dia === 5 || dia === 6) { multFinde = 1.12; etiquetaFinde = 'Fin de semana'; }
   }
-});
-if (!huboDebilidad){
-  gridWeak.innerHTML = '<p style="color:var(--slate); font-size:0.88rem;">No se detectaron temas repetidos con puntuación baja en este período.</p>';
+
+  const { esAlta, motivo } = esTemporadaAlta(opts.checkin);
+  const multTemporada = esAlta ? 1.32 : 0.9;
+  let precioFinal = conUbicacion * multFinde * multTemporada;
+  precioFinal = Math.round(precioFinal / 100) * 100;
+
+  return {
+    base, serviciosTotal, conUbicacion, multFinde, multTemporada, precioFinal,
+    esAlta, motivo, etiquetaFinde, multUbicacion, servicios: opts.servicios, ubicacion: opts.ubicacion,
+  };
 }
 
-let huboFortaleza = false;
-Object.entries(porTema).forEach(([tema, grupo]) => {
-  if (grupo.altas.length >= UMBRAL){
-    huboFortaleza = true;
-    const ejemplo = grupo.altas[0];
-    const card = document.createElement('div');
-    card.className = 'reco-card strength';
-    card.innerHTML = `
-      <div class="src">Tema repetido en reseñas positivas <span class="count-badge">${grupo.altas.length} reseñas · 4-5★</span></div>
-      <h4>Fortaleza: ${tema.toLowerCase()}</h4>
-      <div class="quote">"${ejemplo.text}" — ${ejemplo.name}</div>
-      <p>${descripcionFortaleza[tema] || 'Este punto se repite en varias reseñas con puntuación alta: conviene destacarlo en la descripción del alojamiento.'}</p>
-    `;
-    gridStrong.appendChild(card);
+function leerInputsPrecio(){
+  return {
+    tipo: document.getElementById('tipo').value,
+    ubicacion: document.getElementById('ubicacion').value,
+    m2cub: parseFloat(document.getElementById('m2cub').value) || 0,
+    m2tot: parseFloat(document.getElementById('m2tot').value) || 0,
+    capacidad: parseFloat(document.getElementById('capacidad').value) || 1,
+    habitaciones: parseFloat(document.getElementById('habitaciones').value) || 1,
+    camas: parseFloat(document.getElementById('camas').value) || 1,
+    banos: parseFloat(document.getElementById('banos').value) || 1,
+    cocina: document.getElementById('cocina').checked,
+    checkin: new Date(document.getElementById('checkin').value + 'T00:00:00'),
+    servicios: {
+      wifi: document.getElementById('s-wifi').checked,
+      ac: document.getElementById('s-ac').checked,
+      desayuno: document.getElementById('s-desayuno').checked,
+      parrilla: document.getElementById('s-parrilla').checked,
+      pileta: document.getElementById('s-pileta').checked,
+      estacionamiento: document.getElementById('s-estacionamiento').checked,
+      limpieza: document.getElementById('s-limpieza').checked,
+      spa: document.getElementById('s-spa').checked,
+    },
+  };
+}
+
+function calcularPrecio(){
+  const opts = leerInputsPrecio();
+  const result = calcularPrecioBase(opts);
+
+  document.getElementById('out-temporada').textContent = result.esAlta
+    ? `Temporada alta — ${result.motivo}`
+    : `Temporada baja — ${result.motivo}`;
+
+  document.getElementById('out-price').innerHTML =
+    `$${result.precioFinal.toLocaleString('es-AR')}<small> / noche</small>`;
+  const min = Math.round(result.precioFinal * 0.9 / 100) * 100;
+  const max = Math.round(result.precioFinal * 1.1 / 100) * 100;
+  document.getElementById('out-range').textContent =
+    `Rango competitivo sugerido: $${min.toLocaleString('es-AR')} – $${max.toLocaleString('es-AR')}`;
+
+  document.getElementById('out-breakdown').innerHTML = `
+    <div class="row"><span>Base por tipo y tamaño</span><span>$${Math.round(result.base - result.serviciosTotal).toLocaleString('es-AR')}</span></div>
+    <div class="row"><span>Servicios incluidos (+${Object.values(result.servicios).filter(Boolean).length})</span><span>+$${result.serviciosTotal.toLocaleString('es-AR')}</span></div>
+    <div class="row"><span>Ubicación: ${result.ubicacion === 'centro' ? 'zona céntrica' : 'afueras de la ciudad'}</span><span>×${(result.multUbicacion[result.ubicacion] ?? 1).toFixed(2)}</span></div>
+    <div class="row"><span>${result.etiquetaFinde}</span><span>×${result.multFinde.toFixed(2)}</span></div>
+    <div class="row"><span>${result.esAlta ? 'Temporada alta' : 'Temporada baja'}</span><span>×${result.multTemporada.toFixed(2)}</span></div>
+    <div class="row total"><span>Precio sugerido</span><span>$${result.precioFinal.toLocaleString('es-AR')}</span></div>
+  `;
+
+  renderKPIPrice(result);
+  return result;
+}
+
+function renderKPIPrice(result){
+  const refCheckin = new Date(DATA.hotel.referenceDate + 'T00:00:00');
+  const optsRef = { ...leerInputsPrecio(), checkin: refCheckin };
+  const refResult = calcularPrecioBase(optsRef);
+  const deltaPct = refResult.precioFinal
+    ? Math.round(((result.precioFinal - refResult.precioFinal) / refResult.precioFinal) * 100)
+    : 0;
+
+  document.getElementById('kpi-price').textContent = `$${result.precioFinal.toLocaleString('es-AR')}`;
+  const priceDelta = document.getElementById('kpi-price-delta');
+  if (deltaPct > 0) {
+    setDelta(priceDelta, `▲ +${deltaPct}% vs. tarifa base de hoy`, 'up');
+  } else if (deltaPct < 0) {
+    setDelta(priceDelta, `▼ ${deltaPct}% vs. tarifa base de hoy`, 'down');
+  } else {
+    setDelta(priceDelta, 'Sin variación vs. tarifa base de hoy', '');
   }
-});
-if (!huboFortaleza){
-  gridStrong.innerHTML = '<p style="color:var(--slate); font-size:0.88rem;">No se detectaron temas repetidos con puntuación alta en este período.</p>';
 }
 
 /* ============================================================
-   5) CLIMA (10 días) Y EVENTOS (30 días) — generados al azar
+   RENDER DEL PANEL
    ============================================================ */
-const condiciones = [
-  { ic:'☀️', label:'Soleado' }, { ic:'🌤️', label:'Parcialmente nublado' },
-  { ic:'☁️', label:'Nublado' }, { ic:'🌦️', label:'Lluvias aisladas' },
-  { ic:'🌧️', label:'Lluvioso' }, { ic:'⛈️', label:'Tormentas' }, { ic:'🌬️', label:'Ventoso' },
-];
-const diasSemana = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-const weatherRow = document.getElementById('weather-row');
-const hoy = new Date('2026-06-19T00:00:00');
-for (let i=0; i<10; i++){
-  const d = new Date(hoy); d.setDate(hoy.getDate()+i);
-  const cond = condiciones[Math.floor(Math.random()*condiciones.length)];
-  const max = Math.round(8 + Math.random()*14);
-  const min = Math.round(max - (3 + Math.random()*6));
-  const div = document.createElement('div');
-  div.className = 'day-card';
-  div.innerHTML = `
-    <div class="d">${i===0?'Hoy':diasSemana[d.getDay()]} ${d.getDate()}/${d.getMonth()+1}</div>
-    <div class="ic">${cond.ic}</div>
-    <div class="temp">${max}° <small>${min}°</small></div>
-    <div class="cond">${cond.label}</div>
-  `;
-  weatherRow.appendChild(div);
+function renderTopbar(){
+  document.getElementById('topbar-subtitle').textContent =
+    `Este es el estado de tu alojamiento hoy, ${formatFechaLarga(DATA.hotel.referenceDate)}.`;
 }
 
-const tiposEvento = [
-  { cat:'Cultural', nombres:['Feria de artesanos', 'Festival de música local', 'Muestra de arte regional', 'Noche de teatro al aire libre'] },
-  { cat:'Gastronómico', nombres:['Feria gastronómica', 'Festival de la cerveza artesanal', 'Concurso de cocina regional'] },
-  { cat:'Deportivo', nombres:['Maratón ciudad', 'Torneo de pádel municipal', 'Triatlón costero'] },
-  { cat:'Turístico', nombres:['Fin de semana de promoción turística', 'Apertura de temporada en la zona', 'Jornada de puertas abiertas en bodegas'] },
-];
-const eventsList = document.getElementById('events-list');
-const cantidadEventos = 4 + Math.floor(Math.random()*3); // entre 4 y 6
-const diasUsados = new Set();
-for (let i=0; i<cantidadEventos; i++){
-  let offset;
-  do { offset = 1 + Math.floor(Math.random()*30); } while (diasUsados.has(offset));
-  diasUsados.add(offset);
-  const d = new Date(hoy); d.setDate(hoy.getDate()+offset);
-  const tipo = tiposEvento[Math.floor(Math.random()*tiposEvento.length)];
-  const nombre = tipo.nombres[Math.floor(Math.random()*tipo.nombres.length)];
-  const row = document.createElement('div');
-  row.className = 'event-row';
-  row.innerHTML = `
-    <div class="ed">${d.getDate()}/${d.getMonth()+1}</div>
-    <div class="et"><strong>${nombre}</strong><span>${diasSemana[d.getDay()]} · a ${offset} días de hoy</span></div>
-    <div class="cat">${tipo.cat}</div>
-  `;
-  eventsList.appendChild(row);
+function renderKPIs(reviewMetrics){
+  document.getElementById('kpi-reputation').innerHTML =
+    `${reviewMetrics.promedio}<small style="font-size:1rem; color:var(--slate);">/5</small>`;
+
+  const repDelta = document.getElementById('kpi-reputation-delta');
+  if (reviewMetrics.deltaRep != null && reviewMetrics.deltaRep !== 0) {
+    const sign = reviewMetrics.deltaRep > 0 ? '+' : '';
+    setDelta(repDelta, `${reviewMetrics.deltaRep > 0 ? '▲' : '▼'} ${sign}${reviewMetrics.deltaRep} vs. mes anterior`, reviewMetrics.deltaRep > 0 ? 'up' : 'down');
+  } else {
+    setDelta(repDelta, 'Sin variación vs. mes anterior', '');
+  }
+
+  document.getElementById('kpi-occupancy').textContent = `${DATA.occupancy.current}%`;
+  setDelta(
+    document.getElementById('kpi-occupancy-delta'),
+    `▲ +${DATA.occupancy.deltaPts} pts vs. semana pasada`,
+    'up'
+  );
+
+  document.getElementById('kpi-reviews-month').textContent = String(reviewMetrics.delMes.length);
+  const revDelta = document.getElementById('kpi-reviews-delta');
+  if (reviewMetrics.negativasMes > 0) {
+    setDelta(revDelta, `▼ ${reviewMetrics.negativasMes} negativa${reviewMetrics.negativasMes > 1 ? 's' : ''} a resolver`, 'down');
+  } else {
+    setDelta(revDelta, 'Sin reseñas negativas este mes', 'up');
+  }
 }
-[...diasUsados].sort((a,b)=>a-b); // (orden interno, no afecta el render ya generado)
+
+function renderReviewSummary(metrics){
+  document.getElementById('review-avg').textContent = metrics.promedio;
+  document.getElementById('review-stars').textContent = starString(Math.round(metrics.promedio));
+  document.getElementById('review-count').textContent =
+    `Basado en ${metrics.total} reseña${metrics.total !== 1 ? 's' : ''}`;
+  document.getElementById('review-show-more').textContent =
+    `Ver las ${metrics.total} reseñas`;
+}
+
+function renderReviewDistribution(dist, total){
+  const barDistEl = document.getElementById('bar-dist');
+  barDistEl.innerHTML = '';
+  [5, 4, 3, 2, 1].forEach(star => {
+    const pct = total ? Math.round(dist[star] / total * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'r';
+    row.innerHTML = `<span>${star} ★</span><div class="track"><div class="fill" style="width:${pct}%"></div></div><span>${pct}%</span>`;
+    barDistEl.appendChild(row);
+  });
+}
+
+function renderReviewList(){
+  const reviewListEl = document.getElementById('review-list');
+  reviewListEl.innerHTML = '';
+  DATA.reviews.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'review ' + (r.rating >= 4 ? 'pos' : 'neg');
+    div.innerHTML = `
+      <div class="head"><span class="name">${r.name}</span><span class="date">${r.date}</span></div>
+      <div class="stars" style="color: var(--amber);">${starString(r.rating)}</div>
+      <p>${r.text}</p>
+      <span class="topic">${r.topic}</span>
+    `;
+    reviewListEl.appendChild(div);
+  });
+}
+
+function renderRecommendations(){
+  const porTema = {};
+  DATA.reviews.forEach(r => {
+    if (!porTema[r.topic]) porTema[r.topic] = { bajas: [], altas: [] };
+    if (r.rating <= 2) porTema[r.topic].bajas.push(r);
+    if (r.rating >= 4) porTema[r.topic].altas.push(r);
+  });
+
+  const gridWeak = document.getElementById('reco-grid-weak');
+  const gridStrong = document.getElementById('reco-grid-strong');
+  gridWeak.innerHTML = '';
+  gridStrong.innerHTML = '';
+
+  let huboDebilidad = false;
+  Object.entries(porTema).forEach(([tema, grupo]) => {
+    if (grupo.bajas.length >= UMBRAL_RECO) {
+      huboDebilidad = true;
+      const ejemplo = grupo.bajas[0];
+      const card = document.createElement('div');
+      card.className = 'reco-card weakness';
+      card.innerHTML = `
+        <div class="src">Tema repetido en reseñas negativas <span class="count-badge">${grupo.bajas.length} reseñas · 1-2★</span></div>
+        <h4>Mejorar: ${tema.toLowerCase()}</h4>
+        <div class="quote">"${ejemplo.text}" — ${ejemplo.name}</div>
+        <p>${DATA.sugerenciaMejora[tema] || 'Revisar este punto con el equipo operativo, ya que se repite en varias reseñas con puntuación baja.'}</p>
+      `;
+      gridWeak.appendChild(card);
+    }
+  });
+  if (!huboDebilidad) {
+    gridWeak.innerHTML = '<p style="color:var(--slate); font-size:0.88rem;">No se detectaron temas repetidos con puntuación baja en este período.</p>';
+  }
+
+  let huboFortaleza = false;
+  Object.entries(porTema).forEach(([tema, grupo]) => {
+    if (grupo.altas.length >= UMBRAL_RECO) {
+      huboFortaleza = true;
+      const ejemplo = grupo.altas[0];
+      const card = document.createElement('div');
+      card.className = 'reco-card strength';
+      card.innerHTML = `
+        <div class="src">Tema repetido en reseñas positivas <span class="count-badge">${grupo.altas.length} reseñas · 4-5★</span></div>
+        <h4>Fortaleza: ${tema.toLowerCase()}</h4>
+        <div class="quote">"${ejemplo.text}" — ${ejemplo.name}</div>
+        <p>${DATA.descripcionFortaleza[tema] || 'Este punto se repite en varias reseñas con puntuación alta: conviene destacarlo en la descripción del alojamiento.'}</p>
+      `;
+      gridStrong.appendChild(card);
+    }
+  });
+  if (!huboFortaleza) {
+    gridStrong.innerHTML = '<p style="color:var(--slate); font-size:0.88rem;">No se detectaron temas repetidos con puntuación alta en este período.</p>';
+  }
+}
+
+function renderWeather(){
+  const weatherRow = document.getElementById('weather-row');
+  weatherRow.innerHTML = '';
+  const hoy = refDate();
+  DATA.weather.forEach(day => {
+    const d = new Date(hoy);
+    d.setDate(hoy.getDate() + day.offset);
+    const div = document.createElement('div');
+    div.className = 'day-card';
+    div.innerHTML = `
+      <div class="d">${day.offset === 0 ? 'Hoy' : DIAS_SEMANA[d.getDay()]} ${d.getDate()}/${d.getMonth() + 1}</div>
+      <div class="ic">${day.icon}</div>
+      <div class="temp">${day.max}° <small>${day.min}°</small></div>
+      <div class="cond">${day.label}</div>
+    `;
+    weatherRow.appendChild(div);
+  });
+}
+
+function renderEvents(){
+  const eventsList = document.getElementById('events-list');
+  eventsList.innerHTML = '';
+  const hoy = refDate();
+  [...DATA.events]
+    .sort((a, b) => a.offset - b.offset)
+    .forEach(ev => {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() + ev.offset);
+      const row = document.createElement('div');
+      row.className = 'event-row';
+      row.innerHTML = `
+        <div class="ed">${d.getDate()}/${d.getMonth() + 1}</div>
+        <div class="et"><strong>${ev.name}</strong><span>${DIAS_SEMANA[d.getDay()]} · a ${ev.offset} días de hoy</span></div>
+        <div class="cat">${ev.category}</div>
+      `;
+      eventsList.appendChild(row);
+    });
+}
+
+function renderCharts(metrics){
+  chartState = { dist: metrics.dist, labelsTrend: metrics.labelsTrend, dataTrend: metrics.dataTrend };
+  drawBarChart(
+    'chartStars',
+    ['1★', '2★', '3★', '4★', '5★'],
+    [metrics.dist[1], metrics.dist[2], metrics.dist[3], metrics.dist[4], metrics.dist[5]],
+    ['#E0623F', '#E0623F', '#E8A33D', '#1F6F6B', '#1F6F6B']
+  );
+  drawLineChart('chartTrend', metrics.labelsTrend, metrics.dataTrend, '#1F6F6B', 1, 5);
+}
+
+function initDashboard(){
+  renderTopbar();
+  const reviewMetrics = computeReviewMetrics();
+  renderKPIs(reviewMetrics);
+  renderReviewSummary(reviewMetrics);
+  renderReviewDistribution(reviewMetrics.dist, reviewMetrics.total);
+  renderReviewList();
+  renderCharts(reviewMetrics);
+  renderRecommendations();
+  renderWeather();
+  renderEvents();
+  calcularPrecio();
+}
 
 /* ============================================================
-   5) FUNCIONES DE DIBUJO DE GRÁFICOS (Canvas nativo, sin librerías)
+   GRÁFICOS (Canvas nativo)
    ============================================================ */
 function setupCanvas(id){
   const canvas = document.getElementById(id);
@@ -795,42 +936,41 @@ function drawBarChart(id, labels, values, colors){
   const maxVal = Math.max(...values, 1);
   const n = values.length;
   const gap = 16;
-  const barW = (chartW - gap*(n-1)) / n;
+  const barW = (chartW - gap * (n - 1)) / n;
 
-  ctx.clearRect(0,0,w,h);
+  ctx.clearRect(0, 0, w, h);
   ctx.font = '11px Inter, sans-serif';
   ctx.fillStyle = '#5C6B73';
 
-  // líneas guía horizontales
   ctx.strokeStyle = '#eee';
-  for (let i=0; i<=4; i++){
-    const y = padT + chartH - (chartH * i/4);
-    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w-padR, y); ctx.stroke();
-    ctx.fillText(Math.round(maxVal*i/4), 2, y+4);
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + chartH - (chartH * i / 4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(Math.round(maxVal * i / 4), 2, y + 4);
   }
 
   values.forEach((val, i) => {
     const barH = (val / maxVal) * chartH;
-    const x = padL + i*(barW+gap);
+    const x = padL + i * (barW + gap);
     const y = padT + chartH - barH;
     ctx.fillStyle = colors[i] || '#1F6F6B';
     const r = 5;
     ctx.beginPath();
-    ctx.moveTo(x, y+r);
-    ctx.arcTo(x, y, x+r, y, r);
-    ctx.arcTo(x+barW, y, x+barW, y+r, r);
-    ctx.lineTo(x+barW, y+barH);
-    ctx.lineTo(x, y+barH);
+    ctx.moveTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.arcTo(x + barW, y, x + barW, y + r, r);
+    ctx.lineTo(x + barW, y + barH);
+    ctx.lineTo(x, y + barH);
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#11253A';
     ctx.font = '11px "IBM Plex Mono", monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(val, x+barW/2, y-6);
+    ctx.fillText(val, x + barW / 2, y - 6);
     ctx.fillStyle = '#5C6B73';
     ctx.font = '11px Inter, sans-serif';
-    ctx.fillText(labels[i], x+barW/2, h-8);
+    ctx.fillText(labels[i], x + barW / 2, h - 8);
     ctx.textAlign = 'left';
   });
 }
@@ -841,36 +981,33 @@ function drawLineChart(id, labels, values, color, minY, maxY){
   const chartW = w - padL - padR, chartH = h - padT - padB;
   const n = values.length;
 
-  ctx.clearRect(0,0,w,h);
+  ctx.clearRect(0, 0, w, h);
   ctx.font = '11px Inter, sans-serif';
 
-  // líneas guía
   ctx.strokeStyle = '#eee';
   ctx.fillStyle = '#5C6B73';
-  for (let i=0; i<=4; i++){
-    const val = minY + (maxY-minY)*i/4;
-    const y = padT + chartH - (chartH * i/4);
-    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w-padR, y); ctx.stroke();
-    ctx.fillText(val.toFixed(1), 2, y+4);
+  for (let i = 0; i <= 4; i++) {
+    const val = minY + (maxY - minY) * i / 4;
+    const y = padT + chartH - (chartH * i / 4);
+    ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(w - padR, y); ctx.stroke();
+    ctx.fillText(val.toFixed(1), 2, y + 4);
   }
 
   if (n === 0) return;
-  const stepX = n > 1 ? chartW/(n-1) : 0;
-  const points = values.map((v,i) => ({
-    x: padL + i*stepX,
-    y: padT + chartH - ((v-minY)/(maxY-minY))*chartH
+  const stepX = n > 1 ? chartW / (n - 1) : 0;
+  const points = values.map((v, i) => ({
+    x: padL + i * stepX,
+    y: padT + chartH - ((v - minY) / (maxY - minY)) * chartH,
   }));
 
-  // área debajo de la línea
   ctx.beginPath();
-  ctx.moveTo(points[0].x, padT+chartH);
+  ctx.moveTo(points[0].x, padT + chartH);
   points.forEach(p => ctx.lineTo(p.x, p.y));
-  ctx.lineTo(points[points.length-1].x, padT+chartH);
+  ctx.lineTo(points[points.length - 1].x, padT + chartH);
   ctx.closePath();
   ctx.fillStyle = 'rgba(31,111,107,0.12)';
   ctx.fill();
 
-  // línea
   ctx.beginPath();
   ctx.moveTo(points[0].x, points[0].y);
   points.forEach(p => ctx.lineTo(p.x, p.y));
@@ -878,22 +1015,42 @@ function drawLineChart(id, labels, values, color, minY, maxY){
   ctx.lineWidth = 2.4;
   ctx.stroke();
 
-  // puntos y etiquetas
   ctx.fillStyle = color;
-  points.forEach((p,i) => {
-    ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI*2); ctx.fill();
+  points.forEach((p, i) => {
+    ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = '#5C6B73';
     ctx.textAlign = 'center';
-    ctx.fillText(labels[i], p.x, h-8);
+    ctx.fillText(labels[i], p.x, h - 8);
     ctx.fillStyle = color;
   });
   ctx.textAlign = 'left';
 }
 
+/* ============================================================
+   EVENTOS
+   ============================================================ */
+['tipo', 'ubicacion', 'm2cub', 'm2tot', 'capacidad', 'habitaciones', 'camas', 'banos', 'cocina', 'checkin', 'noches',
+ 's-wifi', 's-ac', 's-desayuno', 's-parrilla', 's-pileta', 's-estacionamiento', 's-limpieza', 's-spa',
+].forEach(id => document.getElementById(id).addEventListener('input', calcularPrecio));
+
+document.getElementById('btn-guardar-aloj').addEventListener('click', () => {
+  const msg = document.getElementById('guardado-msg');
+  msg.style.opacity = '1';
+  setTimeout(() => { msg.style.opacity = '0'; }, 2200);
+});
+
 window.addEventListener('resize', () => {
-  drawBarChart('chartStars', ['1★','2★','3★','4★','5★'], [dist[1],dist[2],dist[3],dist[4],dist[5]], ['#E0623F','#E0623F','#E8A33D','#1F6F6B','#1F6F6B']);
+  const { dist, labelsTrend, dataTrend } = chartState;
+  drawBarChart(
+    'chartStars',
+    ['1★', '2★', '3★', '4★', '5★'],
+    [dist[1], dist[2], dist[3], dist[4], dist[5]],
+    ['#E0623F', '#E0623F', '#E8A33D', '#1F6F6B', '#1F6F6B']
+  );
   drawLineChart('chartTrend', labelsTrend, dataTrend, '#1F6F6B', 1, 5);
 });
+
+initDashboard();
 </script>
 </body>
 </html>
